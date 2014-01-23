@@ -7,14 +7,14 @@ namespace ECommon.Log4Net
     /// </summary>
     public static class ConfigurationExtensions
     {
-        /// <summary>Use Log4Net as the logger for the enode framework.
+        /// <summary>Use Log4Net as the logger.
         /// </summary>
         /// <returns></returns>
         public static Configuration UseLog4Net(this Configuration configuration)
         {
             return UseLog4Net(configuration, "log4net.config");
         }
-        /// <summary>Use Log4Net as the logger for the enode framework.
+        /// <summary>Use Log4Net as the logger.
         /// </summary>
         /// <returns></returns>
         public static Configuration UseLog4Net(this Configuration configuration, string configFile)

@@ -7,7 +7,7 @@ namespace ECommon.JsonNet
     /// </summary>
     public static class ConfigurationExtensions
     {
-        /// <summary>Use Json.Net as the json serializer for the equeue framework.
+        /// <summary>Use Json.Net as the json serializer.
         /// </summary>
         /// <returns></returns>
         public static Configuration UseJsonNet(this Configuration configuration)
