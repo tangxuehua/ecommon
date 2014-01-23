@@ -39,9 +39,60 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
+    <Compile Include="Extensions\IEnumerableExtensions.cs" />
+    <Compile Include="Extensions\TaskExtensions.cs" />
+    <Compile Include="Extensions\TaskSchedulerExtensions.cs" />
+    <Compile Include="Remoting\Exceptions\RemotingSendRequestException.cs" />
+    <Compile Include="Remoting\Exceptions\RemotingTimeoutException.cs" />
+    <Compile Include="Remoting\IChannel.cs" />
+    <Compile Include="Remoting\IRequestHandler.cs" />
+    <Compile Include="Remoting\IRequestHandlerContext.cs" />
+    <Compile Include="Remoting\RemotingMessage.cs" />
+    <Compile Include="Remoting\RemotingRequest.cs" />
+    <Compile Include="Remoting\RemotingResponse.cs" />
+    <Compile Include="Remoting\RemotingUtil.cs" />
+    <Compile Include="Remoting\ResponseFuture.cs" />
+    <Compile Include="Remoting\SocketChannel.cs" />
+    <Compile Include="Remoting\SocketRemotingClient.cs" />
+    <Compile Include="Remoting\SocketRemotingServer.cs" />
+    <Compile Include="Remoting\SocketRequestHandlerContext.cs" />
+    <Compile Include="Remoting\SocketSetting.cs" />
+    <Compile Include="Retring\ActionInfo.cs" />
+    <Compile Include="Retring\DefaultActionExecutionService.cs" />
+    <Compile Include="Retring\IActionExecutionService.cs" />
+    <Compile Include="Serializing\DefaultBinarySerializer.cs" />
+    <Compile Include="Serializing\IBinarySerializer.cs" />
+    <Compile Include="Serializing\IJsonSerializer.cs" />
+    <Compile Include="IoC\ComponentAttribute.cs" />
+    <Compile Include="IoC\IObjectContainer.cs" />
+    <Compile Include="IoC\ObjectContainer.cs" />
+    <Compile Include="Serializing\JsonBasedBinarySerializer.cs" />
+    <Compile Include="Logging\ILogger.cs" />
+    <Compile Include="Logging\ILoggerFactory.cs" />
+    <Compile Include="Utilities\DelegateFactory.cs" />
+    <Compile Include="Utilities\LockUtility.cs" />
+    <Compile Include="Utilities\ObjectId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Scheduling\IScheduleService.cs" />
+    <Compile Include="Scheduling\ScheduleService.cs" />
+    <Compile Include="Scheduling\Worker.cs" />
+    <Compile Include="Socketing\ClientSocket.cs" />
+    <Compile Include="Socketing\ISocketEventListener.cs" />
+    <Compile Include="Socketing\ReceiveContext.cs" />
+    <Compile Include="Socketing\ReceiveState.cs" />
+    <Compile Include="Socketing\SendContext.cs" />
+    <Compile Include="Socketing\SendResult.cs" />
+    <Compile Include="Socketing\ServerSocket.cs" />
+    <Compile Include="Socketing\SocketInfo.cs" />
+    <Compile Include="Socketing\SocketService.cs" />
+    <Compile Include="Socketing\SocketUtils.cs" />
+    <Compile Include="Utilities\ReaderWriterLockSlimExtensions.cs" />
+    <Compile Include="Utilities\RoundRobinThreadAffinedTaskScheduler.cs" />
+    <Compile Include="Utilities\TypeUtils.cs" />
+    <Compile Include="Utilities\ObjectUtils.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
