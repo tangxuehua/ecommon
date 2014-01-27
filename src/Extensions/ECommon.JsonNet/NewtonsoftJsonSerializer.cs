@@ -16,7 +16,7 @@ namespace ECommon.JsonNet
         private static readonly JsonSerializerSettings Settings = new JsonSerializerSettings
         {
             Converters = new List<JsonConverter> { new IsoDateTimeConverter() },
-            ContractResolver = new SisoJsonDefaultContractResolver()
+            ContractResolver = new CustomContractResolver()
         };
         /// <summary>Serialize an object to json string.
         /// </summary>
@@ -33,7 +33,7 @@ namespace ECommon.JsonNet
         /// <returns></returns>
         public object Deserialize(string value, Type type)
         {
-            return JsonConvert.DeserializeObject(value, type);
+            return JsonConvert.DeserializeObject(value, type, Settings);
         }
         /// <summary>Deserialize a json string to a strong type object.
         /// </summary>
@@ -46,19 +46,15 @@ namespace ECommon.JsonNet
         }
     }
 
-    /// <summary>
-    /// </summary>
-    public class SisoJsonDefaultContractResolver : DefaultContractResolver
+    class CustomContractResolver : DefaultContractResolver
     {
-        /// <summary>
-        /// </summary>
-        /// <param name="member"></param>
-        /// <param name="memberSerialization"></param>
-        /// <returns></returns>
+        public CustomContractResolver()
+        {
+            DefaultMembersSearchFlags |= BindingFlags.NonPublic;
+        }
         protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
         {
             var jsonProperty = base.CreateProperty(member, memberSerialization);
-
             if (jsonProperty.Writable) return jsonProperty;
             var property = member as PropertyInfo;
             if (property == null) return jsonProperty;
