@@ -1,4 +1,5 @@
-﻿using ECommon.Configurations;
+﻿using System;
+using ECommon.Configurations;
 using ECommon.Serializing;
 
 namespace ECommon.JsonNet
@@ -10,9 +11,9 @@ namespace ECommon.JsonNet
         /// <summary>Use Json.Net as the json serializer.
         /// </summary>
         /// <returns></returns>
-        public static Configuration UseJsonNet(this Configuration configuration)
+        public static Configuration UseJsonNet(this Configuration configuration, params Type[] creationWithoutConstructorTypes)
         {
-            configuration.SetDefault<IJsonSerializer, NewtonsoftJsonSerializer>(new NewtonsoftJsonSerializer());
+            configuration.SetDefault<IJsonSerializer, NewtonsoftJsonSerializer>(new NewtonsoftJsonSerializer(creationWithoutConstructorTypes));
             return configuration;
         }
     }

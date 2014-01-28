@@ -80,7 +80,7 @@ namespace ECommon.Retring
                 success = action(actionName, retriedCount, maxRetryCount);
                 if (retriedCount > 0)
                 {
-                    _logger.InfoFormat("Retried action {0} for {1} times.", actionName, retriedCount);
+                    _logger.DebugFormat("Retried action {0} for {1} times.", actionName, retriedCount);
                 }
             }
             catch (Exception ex)
