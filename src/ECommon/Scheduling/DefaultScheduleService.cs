@@ -6,13 +6,13 @@ using ECommon.Logging;
 
 namespace ECommon.Scheduling
 {
-    public class ScheduleService : IScheduleService
+    public class DefaultScheduleService : IScheduleService
     {
         private readonly IDictionary<int, Timer> _timerDict = new ConcurrentDictionary<int, Timer>();
         private int _taskCount;
         private readonly ILogger _logger;
 
-        public ScheduleService(ILoggerFactory loggerFactory)
+        public DefaultScheduleService(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.Create(GetType().Name);
         }

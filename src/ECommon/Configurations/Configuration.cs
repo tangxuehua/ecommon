@@ -1,5 +1,9 @@
 ﻿using System;
 using ECommon.IoC;
+using ECommon.Logging;
+using ECommon.Retring;
+using ECommon.Scheduling;
+using ECommon.Serializing;
 
 namespace ECommon.Configurations
 {
@@ -31,6 +35,16 @@ namespace ECommon.Configurations
             where TImplementer : class, TService
         {
             ObjectContainer.RegisterInstance<TService, TImplementer>(instance);
+            return this;
+        }
+
+        public Configuration RegisterCommonComponents()
+        {
+            SetDefault<ILoggerFactory, EmptyLoggerFactory>();
+            SetDefault<IBinarySerializer, DefaultBinarySerializer>();
+            SetDefault<IJsonSerializer, NoImplementationJsonSerializer>();
+            SetDefault<IScheduleService, DefaultScheduleService>();
+            SetDefault<IActionExecutionService, DefaultActionExecutionService>();
             return this;
         }
     }

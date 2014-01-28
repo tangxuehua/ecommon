@@ -10,7 +10,7 @@ namespace ECommon.Retring
     public class DefaultActionExecutionService : IActionExecutionService
     {
         private const int DefaultPeriod = 5000;
-        private readonly BlockingCollection<ActionInfo> _actionQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
+        private readonly BlockingCollection<ActionInfo> _actionQueue;
         private readonly Worker _worker;
         private readonly ILogger _logger;
 
@@ -20,6 +20,7 @@ namespace ECommon.Retring
         public DefaultActionExecutionService(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.Create(GetType().Name);
+            _actionQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
             _worker = new Worker(TryTakeAndExecuteAction, DefaultPeriod);
             _worker.Start();
         }
