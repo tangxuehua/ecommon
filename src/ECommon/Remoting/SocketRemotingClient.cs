@@ -23,7 +23,8 @@ namespace ECommon.Remoting
         private readonly Worker _processResponseMessageWorker;
         private int _scanTimeoutRequestTaskId;
 
-        public SocketRemotingClient(string address = "127.0.0.1", int port = 5000)
+        public SocketRemotingClient() : this(SocketUtils.GetLocalIPV4().ToString(), 5000) { }
+        public SocketRemotingClient(string address, int port)
         {
             _address = address;
             _port = port;
