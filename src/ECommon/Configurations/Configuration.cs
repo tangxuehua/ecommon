@@ -42,9 +42,9 @@ namespace ECommon.Configurations
         {
             SetDefault<ILoggerFactory, EmptyLoggerFactory>();
             SetDefault<IBinarySerializer, DefaultBinarySerializer>();
-            SetDefault<IJsonSerializer, NoImplementationJsonSerializer>();
+            SetDefault<IJsonSerializer, NotImplementedJsonSerializer>();
             SetDefault<IScheduleService, DefaultScheduleService>();
-            SetDefault<IActionExecutionService, DefaultActionExecutionService>();
+            SetDefault<IActionExecutionService, DefaultActionExecutionService>(LifeStyle.Transient);
             return this;
         }
     }
