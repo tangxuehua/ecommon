@@ -64,7 +64,7 @@
     <Compile Include="Retring\DefaultActionExecutionService.cs" />
     <Compile Include="Retring\IActionExecutionService.cs" />
     <Compile Include="Serializing\DefaultBinarySerializer.cs" />
-    <Compile Include="Serializing\NoImplementationJsonSerializer.cs" />
+    <Compile Include="Serializing\NotImplementedJsonSerializer.cs" />
     <Compile Include="Serializing\IBinarySerializer.cs" />
     <Compile Include="Serializing\IJsonSerializer.cs" />
     <Compile Include="IoC\ComponentAttribute.cs" />

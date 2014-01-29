@@ -1,7 +1,8 @@
 ﻿using System;
+
 namespace ECommon.Serializing
 {
-    public class NoImplementationJsonSerializer : IJsonSerializer
+    public class NotImplementedJsonSerializer : IJsonSerializer
     {
         public string Serialize(object obj)
         {
