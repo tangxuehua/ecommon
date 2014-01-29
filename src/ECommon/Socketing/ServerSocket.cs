@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -51,7 +50,6 @@ namespace ECommon.Socketing
             Task.Factory.StartNew(() =>
             {
                 _messageReceivedCallback = messageReceivedCallback;
-                _scheduleService.ScheduleTask(CheckDisconnectedClientSocket, 3 * 1000, 3 * 1000);
                 _running = true;
 
                 while (_running)
@@ -97,49 +95,11 @@ namespace ECommon.Socketing
             _running = false;
         }
 
-        private void CheckDisconnectedClientSocket()
-        {
-            var disconnectedSockets = new List<SocketInfo>();
-            foreach (var entry in _clientSocketDict)
-            {
-                if (!IsSocketConnected(entry.Value))
-                {
-                    disconnectedSockets.Add(entry.Value);
-                }
-            }
-            foreach (var socket in disconnectedSockets)
-            {
-                _clientSocketDict.Remove(socket.SocketRemotingEndpointAddress);
-                NotifySocketDisconnected(socket);
-            }
-        }
-
-        private bool IsSocketConnected(SocketInfo clientSocketInfo)
-        {
-            var clientSocket = clientSocketInfo.InnerSocket;
-            var part1 = clientSocket.Poll(1000, SelectMode.SelectRead);
-            var part2 = clientSocket.Available == 0;
-
-            if ((part1 && part2) || !clientSocket.Connected)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         private void NotifyNewSocketAccepted(SocketInfo socketInfo)
         {
             if (_socketEventListener != null)
             {
                 Task.Factory.StartNew(() => _socketEventListener.OnNewSocketAccepted(socketInfo));
-            }
-        }
-        private void NotifySocketDisconnected(SocketInfo socketInfo)
-        {
-            if (_socketEventListener != null)
-            {
-                Task.Factory.StartNew(() => _socketEventListener.OnSocketDisconnected(socketInfo));
             }
         }
         private void NotifySocketReceiveException(SocketInfo socketInfo, Exception exception)
