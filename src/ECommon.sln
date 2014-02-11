@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon", "ECommon\ECommon.csproj", "{D60F17CE-FF99-42CD-AF71-97C157B17AF3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Extensions", "Extensions", "{82C86A3D-FDE3-4165-9379-584EB947D2FC}"
@@ -10,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.JsonNet", "Extensions\ECommon.JsonNet\ECommon.JsonNet.csproj", "{A118C5A4-52C3-4659-860A-31EE526B0877}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Log4Net", "Extensions\ECommon.Log4Net\ECommon.Log4Net.csproj", "{C69CF480-4B6B-4006-8C17-43054C1EBE1C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.ProtocolBuf", "Extensions\ECommon.ProtocolBuf\ECommon.ProtocolBuf.csproj", "{FA9D38B4-B327-4869-B45F-1FACAA354904}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +37,10 @@ Global
 		{C69CF480-4B6B-4006-8C17-43054C1EBE1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C69CF480-4B6B-4006-8C17-43054C1EBE1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C69CF480-4B6B-4006-8C17-43054C1EBE1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA9D38B4-B327-4869-B45F-1FACAA354904}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA9D38B4-B327-4869-B45F-1FACAA354904}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA9D38B4-B327-4869-B45F-1FACAA354904}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA9D38B4-B327-4869-B45F-1FACAA354904}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -41,5 +49,6 @@ Global
 		{1C523165-5CC7-497A-99D0-9E59E3110C54} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
 		{A118C5A4-52C3-4659-860A-31EE526B0877} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
 		{C69CF480-4B6B-4006-8C17-43054C1EBE1C} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
+		{FA9D38B4-B327-4869-B45F-1FACAA354904} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
 	EndGlobalSection
 EndGlobal
