@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.Serialization;
 using ECommon.Serializing;
 using ProtoBuf;
 
@@ -17,16 +18,15 @@ namespace ECommon.ProtocolBuf
         }
         public T Deserialize<T>(byte[] data) where T : class
         {
-            using (var stream = new MemoryStream(data))
-            {
-                return Serializer.Deserialize<T>(stream);
-            }
+            return Deserialize(data, typeof(T)) as T;
         }
         public object Deserialize(byte[] data, Type type)
         {
             using (var stream = new MemoryStream(data))
             {
-                return Serializer.NonGeneric.Deserialize(type, stream);
+                var instance = FormatterServices.GetUninitializedObject(type);
+                Serializer.Merge(stream, instance);
+                return instance;
             }
         }
     }
