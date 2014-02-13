@@ -18,14 +18,19 @@ namespace ECommon.ProtocolBuf
         }
         public T Deserialize<T>(byte[] data) where T : class
         {
-            return Deserialize(data, typeof(T)) as T;
+            using (var stream = new MemoryStream(data))
+            {
+                var instance = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+                Serializer.Merge(stream, instance);
+                return instance;
+            }
         }
         public object Deserialize(byte[] data, Type type)
         {
             using (var stream = new MemoryStream(data))
             {
                 var instance = FormatterServices.GetUninitializedObject(type);
-                Serializer.Merge(stream, instance);
+                Serializer.NonGeneric.Merge(stream, instance);
                 return instance;
             }
         }
