@@ -252,6 +252,15 @@ namespace ECommon.Utilities
         }
 
         /// <summary>
+        /// Generates a new ObjectId string with a unique value.
+        /// </summary>
+        /// <returns>The string value of the new generated ObjectId.</returns>
+        public static string GenerateNewStringId()
+        {
+            return GenerateNewId().ToString();
+        }
+
+        /// <summary>
         /// Packs the components of an ObjectId into a byte array.
         /// </summary>
         /// <param name="timestamp">The timestamp.</param>
