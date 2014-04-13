@@ -31,7 +31,7 @@ namespace ECommon.Socketing
             _socketService = new SocketService(NotifySocketReceiveException);
             _newClientSocketSignal = new ManualResetEvent(false);
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().Name);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
             _running = false;
         }
 
@@ -69,7 +69,7 @@ namespace ECommon.Socketing
                             {
                                 var receiveContext = new ReceiveContext(socketInfo, receivedMessage, context =>
                                 {
-                                    _socketService.SendMessage(context.ReplySocketInfo.InnerSocket, context.ReplyMessage, sendResult => { });
+                                    _socketService.SendMessage(context.ReplySocketInfo, context.ReplyMessage, sendResult => { });
                                 });
                                 _messageReceivedCallback(receiveContext);
                             });

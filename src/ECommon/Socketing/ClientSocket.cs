@@ -11,6 +11,7 @@ namespace ECommon.Socketing
     public class ClientSocket
     {
         private Socket _socket;
+        private SocketInfo _socketInfo;
         private SocketService _socketService;
         private ILogger _logger;
 
@@ -18,12 +19,13 @@ namespace ECommon.Socketing
         {
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _socketService = new SocketService(null);
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().Name);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
         public ClientSocket Connect(string address, int port)
         {
             _socket.Connect(new IPEndPoint(IPAddress.Parse(address), port));
+            _socketInfo = new SocketInfo(_socket);
             return this;
         }
         public ClientSocket Start(Action<byte[]> replyMessageReceivedCallback)
@@ -52,7 +54,7 @@ namespace ECommon.Socketing
         }
         public ClientSocket SendMessage(byte[] messageContent, Action<SendResult> messageSendCallback)
         {
-            _socketService.SendMessage(_socket, messageContent, messageSendCallback);
+            _socketService.SendMessage(_socketInfo, messageContent, messageSendCallback);
             return this;
         }
     }

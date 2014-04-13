@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using ECommon.IoC;
 using ECommon.Logging;
@@ -50,9 +51,7 @@ namespace ECommon.Remoting
             {
                 var errorMessage = string.Format("No request handler found for remoting request, request code:{0}", remotingRequest.Code);
                 _logger.Error(errorMessage);
-                var remotingResponse = new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage));
-                receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
-                receiveContext.MessageHandledCallback(receiveContext);
+                DoMessageHandledCallback(receiveContext, remotingRequest, new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
                 return;
             }
 
@@ -61,8 +60,7 @@ namespace ECommon.Remoting
                 var remotingResponse = requestHandler.HandleRequest(new SocketRequestHandlerContext(receiveContext), remotingRequest);
                 if (!remotingRequest.IsOneway && remotingResponse != null)
                 {
-                    receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
-                    receiveContext.MessageHandledCallback(receiveContext);
+                    DoMessageHandledCallback(receiveContext, remotingRequest, remotingResponse);
                 }
             }
             catch (Exception ex)
@@ -71,10 +69,24 @@ namespace ECommon.Remoting
                 _logger.Error(errorMessage, ex);
                 if (!remotingRequest.IsOneway)
                 {
-                    var remotingResponse = new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message));
-                    receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
-                    receiveContext.MessageHandledCallback(receiveContext);
+                    DoMessageHandledCallback(receiveContext, remotingRequest, new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
                 }
+            }
+        }
+        private void DoMessageHandledCallback(ReceiveContext receiveContext, RemotingRequest remotingRequest, RemotingResponse remotingResponse)
+        {
+            receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
+            try
+            {
+                receiveContext.MessageHandledCallback(receiveContext);
+            }
+            catch (SocketException socketException)
+            {
+                _logger.Error(string.Format("DoMessageHandledCallback has socket exception, remoting request code:{0}, socket ErrorCode:{1}.", remotingRequest.Code, socketException.SocketErrorCode), socketException);
+            }
+            catch (Exception exception)
+            {
+                _logger.Error(string.Format("DoMessageHandledCallback has known exception, remoting request code:{0}.", remotingRequest.Code), exception);
             }
         }
     }

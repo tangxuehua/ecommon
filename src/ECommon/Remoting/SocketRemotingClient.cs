@@ -33,7 +33,7 @@ namespace ECommon.Remoting
             _responseMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _processResponseMessageWorker = new Worker(ProcessResponseMessage);
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().Name);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
             _clientSocket.Connect(address, port);
         }
 
