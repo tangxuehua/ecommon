@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using ECommon.IoC;
+using ECommon.Components;
 using ECommon.Logging;
 
 namespace ECommon.Scheduling

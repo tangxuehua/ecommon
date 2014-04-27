@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ECommon.IoC
+namespace ECommon.Components
 {
     /// <summary>An attribute to indicate a class is a component.
     /// </summary>

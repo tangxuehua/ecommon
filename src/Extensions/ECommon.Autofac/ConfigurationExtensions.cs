@@ -1,6 +1,6 @@
 ﻿using Autofac;
 using ECommon.Configurations;
-using ECommon.IoC;
+using ECommon.Components;
 
 namespace ECommon.Autofac
 {

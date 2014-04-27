@@ -33,6 +33,7 @@
     <DocumentationFile>bin\Release\ECommon.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -40,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configurations\Configuration.cs" />
+    <Compile Include="Dapper\SqlMapper.cs" />
+    <Compile Include="Dapper\SqlMapper_Extensions.cs" />
     <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
     <Compile Include="Extensions\TaskExtensions.cs" />
@@ -68,9 +71,9 @@
     <Compile Include="Serializing\NotImplementedJsonSerializer.cs" />
     <Compile Include="Serializing\IBinarySerializer.cs" />
     <Compile Include="Serializing\IJsonSerializer.cs" />
-    <Compile Include="IoC\ComponentAttribute.cs" />
-    <Compile Include="IoC\IObjectContainer.cs" />
-    <Compile Include="IoC\ObjectContainer.cs" />
+    <Compile Include="Components\ComponentAttribute.cs" />
+    <Compile Include="Components\IObjectContainer.cs" />
+    <Compile Include="Components\ObjectContainer.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\ILoggerFactory.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
@@ -95,6 +98,7 @@
     <Compile Include="Utilities\TypeUtils.cs" />
     <Compile Include="Utilities\ObjectUtils.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

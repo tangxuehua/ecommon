@@ -1,5 +1,5 @@
 ﻿using System;
-using ECommon.IoC;
+using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Retring;
 using ECommon.Scheduling;
