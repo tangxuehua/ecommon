@@ -43,7 +43,7 @@ namespace ECommon.Scheduling
             IntervalMilliseconds = intervalMilliseconds;
             _thread = new Thread(Loop) { IsBackground = true };
             _thread.Name = string.Format("Worker thread {0}", _thread.ManagedThreadId);
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(_thread.Name);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName + "-" + _thread.ManagedThreadId);
         }
 
         /// <summary>Start the worker.
@@ -53,6 +53,10 @@ namespace ECommon.Scheduling
             if (!_thread.IsAlive)
             {
                 _thread.Start();
+            }
+            if (_stopped)
+            {
+                _stopped = false;
             }
             return this;
         }

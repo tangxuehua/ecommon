@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using ECommon.Components;
 using ECommon.Logging;
 
@@ -8,11 +9,11 @@ namespace ECommon.Socketing
     public class SocketService
     {
         private ILogger _logger;
-        private Action<SocketInfo, Exception> _socketReceiveExceptionAction;
+        private ISocketEventListener _socketEventListener;
 
-        public SocketService(Action<SocketInfo, Exception> socketReceiveExceptionAction)
+        public SocketService(ISocketEventListener socketEventListener)
         {
-            _socketReceiveExceptionAction = socketReceiveExceptionAction;
+            _socketEventListener = socketEventListener;
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
         public void SendMessage(SocketInfo socketInfo, byte[] message, Action<SendResult> messageSentCallback)
@@ -20,7 +21,7 @@ namespace ECommon.Socketing
             var wrappedMessage = SocketUtils.BuildMessage(message);
             if (wrappedMessage.Length > 0)
             {
-                SafeSocketOperation("BeginSend", socketInfo.SocketRemotingEndpointAddress, () =>
+                SafeSocketOperation("BeginSend", socketInfo, () =>
                 {
                     socketInfo.InnerSocket.BeginSend(
                         wrappedMessage,
@@ -39,7 +40,7 @@ namespace ECommon.Socketing
 
         private void ReceiveInternal(ReceiveState receiveState, int size)
         {
-            SafeSocketOperation("BeginReceive", receiveState.SourceSocket.SocketRemotingEndpointAddress, () =>
+            SafeSocketOperation("BeginReceive", receiveState.SourceSocket, () =>
             {
                 receiveState.SourceSocket.InnerSocket.BeginReceive(receiveState.Buffer, 0, size, 0, ReceiveCallback, receiveState);
             });
@@ -47,23 +48,16 @@ namespace ECommon.Socketing
         private void SendCallback(IAsyncResult asyncResult)
         {
             var sendContext = (SendContext)asyncResult.AsyncState;
-            try
+
+            SafeSocketOperation("EndSend", sendContext.TargetSocket, () =>
             {
                 sendContext.TargetSocket.InnerSocket.EndSend(asyncResult);
                 sendContext.MessageSendCallback(new SendResult(true, null));
-            }
-            catch (SocketException socketException)
+            },
+            (ex) =>
             {
-                _logger.Error(string.Format("Socket EndSend has socket exception, remoting endpoint address:{0}, errorCode:{1}",
-                    sendContext.TargetSocket.SocketRemotingEndpointAddress,
-                    socketException.SocketErrorCode), socketException);
-                sendContext.MessageSendCallback(new SendResult(false, socketException));
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(string.Format("Socket EndSend has unkonwn exception, remoting endpoint address:{1}", sendContext.TargetSocket.SocketRemotingEndpointAddress), ex);
                 sendContext.MessageSendCallback(new SendResult(false, ex));
-            }
+            });
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
@@ -77,28 +71,7 @@ namespace ECommon.Socketing
                 return;
             }
 
-            try
-            {
-                bytesRead = sourceSocket.EndReceive(asyncResult);
-            }
-            catch (SocketException socketException)
-            {
-                _logger.Error(string.Format("Socket EndReceive has socket exception, remoting endpoint address:{0}, errorCode:{1}",
-                    sourceSocketInfo.SocketRemotingEndpointAddress,
-                    socketException.SocketErrorCode), socketException);
-                if (_socketReceiveExceptionAction != null)
-                {
-                    _socketReceiveExceptionAction(sourceSocketInfo, socketException);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(string.Format("Socket EndReceive has unkonwn exception, remoting endpoint address:{0}", sourceSocketInfo.SocketRemotingEndpointAddress), ex);
-                if (_socketReceiveExceptionAction != null)
-                {
-                    _socketReceiveExceptionAction(sourceSocketInfo, ex);
-                }
-            }
+            SafeSocketOperation("EndReceive", sourceSocketInfo, () => bytesRead = sourceSocket.EndReceive(asyncResult));
 
             if (bytesRead > 0)
             {
@@ -130,7 +103,7 @@ namespace ECommon.Socketing
                 }
             }
         }
-        private void SafeSocketOperation(string operationName, string socketRemotingEndpointAddress, Action action)
+        private void SafeSocketOperation(string operationName, SocketInfo socketInfo, Action action, Action<Exception> exceptionHandler = null)
         {
             try
             {
@@ -138,16 +111,27 @@ namespace ECommon.Socketing
             }
             catch (SocketException socketException)
             {
-                _logger.Error(string.Format("Socket {0} has socket exception, remoting endpoint address:{1}, errorCode:{2}",
-                    operationName,
-                    socketRemotingEndpointAddress,
-                    socketException.SocketErrorCode), socketException);
+                if (_socketEventListener != null)
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        _socketEventListener.OnSocketException(socketInfo, socketException);
+                    });
+                }
+                if (exceptionHandler != null)
+                {
+                    exceptionHandler(socketException);
+                }
             }
             catch (Exception ex)
             {
                 _logger.Error(string.Format("Socket {0} has unkonwn exception, remoting endpoint address:{1}",
                     operationName,
-                    socketRemotingEndpointAddress), ex);
+                    socketInfo.SocketRemotingEndpointAddress), ex);
+                if (exceptionHandler != null)
+                {
+                    exceptionHandler(ex);
+                }
             }
         }
     }

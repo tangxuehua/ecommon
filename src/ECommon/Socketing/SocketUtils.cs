@@ -11,6 +11,22 @@ namespace ECommon.Socketing
         {
             return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(x => x.AddressFamily == AddressFamily.InterNetwork).ToString();
         }
+        public static bool IsSocketDisconnectedException(SocketException socketException)
+        {
+            var errorCode = socketException.SocketErrorCode;
+            return errorCode == SocketError.NetworkDown ||
+                   errorCode == SocketError.NetworkReset ||
+                   errorCode == SocketError.NetworkUnreachable ||
+                   errorCode == SocketError.ConnectionAborted ||
+                   errorCode == SocketError.ConnectionReset ||
+                   errorCode == SocketError.HostNotFound ||
+                   errorCode == SocketError.HostUnreachable ||
+                   errorCode == SocketError.NotConnected ||
+                   errorCode == SocketError.Shutdown ||
+                   errorCode == SocketError.Disconnecting ||
+                   errorCode == SocketError.AddressNotAvailable ||
+                   errorCode == SocketError.TimedOut;
+        }
         public static int ParseMessageLength(byte[] buffer)
         {
             var data = new byte[4];

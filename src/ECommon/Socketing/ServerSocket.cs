@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ECommon.Extensions;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Scheduling;
@@ -14,25 +12,20 @@ namespace ECommon.Socketing
     public class ServerSocket
     {
         private Socket _socket;
-        private ConcurrentDictionary<string, SocketInfo> _clientSocketDict;
         private Action<ReceiveContext> _messageReceivedCallback;
         private ManualResetEvent _newClientSocketSignal;
         private SocketService _socketService;
         private ISocketEventListener _socketEventListener;
-        private IScheduleService _scheduleService;
+        private Worker _listenNewClientWorker;
         private ILogger _logger;
-        private bool _running;
 
         public ServerSocket(ISocketEventListener socketEventListener)
         {
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _clientSocketDict = new ConcurrentDictionary<string, SocketInfo>();
             _socketEventListener = socketEventListener;
-            _socketService = new SocketService(NotifySocketReceiveException);
+            _socketService = new SocketService(socketEventListener);
             _newClientSocketSignal = new ManualResetEvent(false);
-            _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
-            _running = false;
         }
 
         public ServerSocket Listen(int backlog)
@@ -47,52 +40,52 @@ namespace ECommon.Socketing
         }
         public void Start(Action<ReceiveContext> messageReceivedCallback)
         {
-            Task.Factory.StartNew(() =>
+            if (_listenNewClientWorker.IsAlive)
+            {
+                return;
+            }
+
+            _listenNewClientWorker = new Worker(() =>
             {
                 _messageReceivedCallback = messageReceivedCallback;
-                _running = true;
+                _newClientSocketSignal.Reset();
 
-                while (_running)
+                try
                 {
-                    _newClientSocketSignal.Reset();
-
-                    try
+                    _socket.BeginAccept((asyncResult) =>
                     {
-                        _socket.BeginAccept((asyncResult) =>
+                        var clientSocket = _socket.EndAccept(asyncResult);
+                        var socketInfo = new SocketInfo(clientSocket);
+                        NotifyNewSocketAccepted(socketInfo);
+                        _newClientSocketSignal.Set();
+                        _socketService.ReceiveMessage(socketInfo, receivedMessage =>
                         {
-                            var clientSocket = _socket.EndAccept(asyncResult);
-                            var socketInfo = new SocketInfo(clientSocket);
-                            _clientSocketDict.TryAdd(socketInfo.SocketRemotingEndpointAddress, socketInfo);
-                            NotifyNewSocketAccepted(socketInfo);
-                            _newClientSocketSignal.Set();
-                            _socketService.ReceiveMessage(socketInfo, receivedMessage =>
+                            var receiveContext = new ReceiveContext(socketInfo, receivedMessage, context =>
                             {
-                                var receiveContext = new ReceiveContext(socketInfo, receivedMessage, context =>
-                                {
-                                    _socketService.SendMessage(context.ReplySocketInfo, context.ReplyMessage, sendResult => { });
-                                });
-                                _messageReceivedCallback(receiveContext);
+                                _socketService.SendMessage(context.ReplySocketInfo, context.ReplyMessage, sendResult => { });
                             });
-                        }, _socket);
-                    }
-                    catch (SocketException socketException)
-                    {
-                        _logger.Error(string.Format("Socket accept exception, ErrorCode:{0}", socketException.SocketErrorCode), socketException);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Error("Unknown socket accept exception.", ex);
-                    }
-
-                    _newClientSocketSignal.WaitOne();
+                            _messageReceivedCallback(receiveContext);
+                        });
+                    }, _socket);
                 }
+                catch (SocketException socketException)
+                {
+                    _logger.Error(string.Format("Socket accept exception, ErrorCode:{0}", socketException.SocketErrorCode), socketException);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Unknown socket accept exception.", ex);
+                }
+
+                _newClientSocketSignal.WaitOne();
             });
+            _listenNewClientWorker.Start();
         }
         public void Shutdown()
         {
+            _listenNewClientWorker.Stop();
             _socket.Shutdown(SocketShutdown.Both);
             _socket.Close();
-            _running = false;
         }
 
         private void NotifyNewSocketAccepted(SocketInfo socketInfo)
@@ -100,17 +93,6 @@ namespace ECommon.Socketing
             if (_socketEventListener != null)
             {
                 Task.Factory.StartNew(() => _socketEventListener.OnNewSocketAccepted(socketInfo));
-            }
-        }
-        private void NotifySocketReceiveException(SocketInfo socketInfo, Exception exception)
-        {
-            if (_socketEventListener != null)
-            {
-                Task.Factory.StartNew(() =>
-                {
-                    _clientSocketDict.Remove(socketInfo.SocketRemotingEndpointAddress);
-                    _socketEventListener.OnSocketReceiveException(socketInfo, exception);
-                });
             }
         }
     }

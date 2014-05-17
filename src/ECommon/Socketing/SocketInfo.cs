@@ -12,7 +12,7 @@ namespace ECommon.Socketing
         {
             if (!socket.Connected)
             {
-                throw new Exception("Invalid socket.");
+                throw new Exception("Invalid socket, socket is disconnected.");
             }
             InnerSocket = socket;
             SocketRemotingEndpointAddress = socket.RemoteEndPoint.ToString();

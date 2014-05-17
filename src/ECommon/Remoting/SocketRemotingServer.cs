@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
@@ -13,7 +12,6 @@ namespace ECommon.Remoting
         private readonly ServerSocket _serverSocket;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
         private readonly ILogger _logger;
-        private bool _started;
 
         public SocketRemotingServer(string name, SocketSetting socketSetting, ISocketEventListener socketEventListener = null)
         {
@@ -21,16 +19,11 @@ namespace ECommon.Remoting
             _requestHandlerDict = new Dictionary<int, IRequestHandler>();
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().Name);
             _serverSocket.Bind(socketSetting.Address, socketSetting.Port).Listen(socketSetting.Backlog);
-            _started = false;
         }
 
         public void Start()
         {
-            if (_started) return;
-
             _serverSocket.Start(HandleRemotingRequest);
-
-            _started = true;
         }
 
         public void Shutdown()
@@ -76,18 +69,7 @@ namespace ECommon.Remoting
         private void DoMessageHandledCallback(ReceiveContext receiveContext, RemotingRequest remotingRequest, RemotingResponse remotingResponse)
         {
             receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
-            try
-            {
-                receiveContext.MessageHandledCallback(receiveContext);
-            }
-            catch (SocketException socketException)
-            {
-                _logger.Error(string.Format("DoMessageHandledCallback has socket exception, remoting request code:{0}, socket ErrorCode:{1}.", remotingRequest.Code, socketException.SocketErrorCode), socketException);
-            }
-            catch (Exception exception)
-            {
-                _logger.Error(string.Format("DoMessageHandledCallback has known exception, remoting request code:{0}.", remotingRequest.Code), exception);
-            }
+            receiveContext.MessageHandledCallback(receiveContext);
         }
     }
 }
