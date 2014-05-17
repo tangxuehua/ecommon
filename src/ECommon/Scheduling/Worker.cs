@@ -9,70 +9,63 @@ namespace ECommon.Scheduling
     /// </summary>
     public class Worker
     {
-        private bool _stopped;
+        private volatile bool _requestingStop;
         private readonly Action _action;
-        private readonly Thread _thread;
-        private readonly ILogger _logger;
+        private Thread _thread;
+        private ILogger _logger;
 
-        /// <summary>Return the IsAlive status of the current worker.
+        /// <summary>Return the IsAlive status of the current worker thread.
         /// </summary>
         public bool IsAlive
         {
             get
             {
-                return _thread.IsAlive;
+                return _thread != null && _thread.IsAlive;
             }
         }
         /// <summary>Gets or sets the interval which the action executed.
         /// </summary>
         public int IntervalMilliseconds { get; set; }
 
-        /// <summary>Initialize a new Worker for the specified method to run.
+        /// <summary>Initialize a new Worker thread with the specified action.
         /// </summary>
-        /// <param name="action">The delegate method to execute in a loop.</param>
-        public Worker(Action action) : this(action, 0)
-        {
-        }
-        /// <summary>Initialize a new Worker for the specified method to run.
+        /// <param name="action">The delegate action to run in a loop.</param>
+        public Worker(Action action) : this(action, 0) { }
+        /// <summary>Initialize a new Worker thread with the specified action.
         /// </summary>
-        /// <param name="action">The delegate method to execute in a loop.</param>
-        /// <param name="intervalMilliseconds">The interval which the action executed.</param>
+        /// <param name="action">The delegate action to run in a loop.</param>
+        /// <param name="intervalMilliseconds">The action run interval milliseconds.</param>
         public Worker(Action action, int intervalMilliseconds)
         {
             _action = action;
             IntervalMilliseconds = intervalMilliseconds;
-            _thread = new Thread(Loop) { IsBackground = true };
-            _thread.Name = string.Format("Worker thread {0}", _thread.ManagedThreadId);
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName + "-" + _thread.ManagedThreadId);
         }
 
         /// <summary>Start the worker.
         /// </summary>
         public Worker Start()
         {
-            if (!_thread.IsAlive)
-            {
-                _thread.Start();
-            }
-            if (_stopped)
-            {
-                _stopped = false;
-            }
+            _requestingStop = false;
+            _thread = new Thread(Loop) { IsBackground = true };
+            _thread.Name = string.Format("Worker Thread {0}", _thread.ManagedThreadId);
+            _thread.Start();
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName + "-" + _thread.ManagedThreadId);
+
             return this;
         }
         /// <summary>Stop the worker.
         /// </summary>
         public Worker Stop()
         {
-            _stopped = true;
+            _requestingStop = true;
             return this;
         }
 
-        /// <summary>Executes the delegate method until the <see cref="Stop"/> method is called.
+        /// <summary>Executes the delegate action until the <see cref="Stop"/> method is called.
         /// </summary>
         private void Loop()
         {
-            while (!_stopped)
+            while (!_requestingStop)
             {
                 try
                 {
@@ -90,7 +83,7 @@ namespace ECommon.Scheduling
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Exception raised when executing worker delegate.", ex);
+                    _logger.Error(ex);
                 }
             }
         }

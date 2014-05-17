@@ -40,7 +40,7 @@ namespace ECommon.Socketing
         }
         public void Start(Action<ReceiveContext> messageReceivedCallback)
         {
-            if (_listenNewClientWorker.IsAlive)
+            if (_listenNewClientWorker != null && _listenNewClientWorker.IsAlive)
             {
                 return;
             }

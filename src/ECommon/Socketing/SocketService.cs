@@ -109,20 +109,21 @@ namespace ECommon.Socketing
             {
                 action();
             }
-            catch (SocketException socketException)
+            catch (SocketException ex)
             {
                 if (_socketEventListener != null)
                 {
                     Task.Factory.StartNew(() =>
                     {
-                        _socketEventListener.OnSocketException(socketInfo, socketException);
+                        _socketEventListener.OnSocketException(socketInfo, ex);
                     });
                 }
                 if (exceptionHandler != null)
                 {
-                    exceptionHandler(socketException);
+                    exceptionHandler(ex);
                 }
             }
+            catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
                 _logger.Error(string.Format("Socket {0} has unkonwn exception, remoting endpoint address:{1}",

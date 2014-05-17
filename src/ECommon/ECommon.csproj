@@ -49,6 +49,7 @@
     <Compile Include="Extensions\TaskSchedulerExtensions.cs" />
     <Compile Include="Logging\EmptyLogger.cs" />
     <Compile Include="Logging\EmptyLoggerFactory.cs" />
+    <Compile Include="Remoting\Exceptions\RemotingServerUnAvailableException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingSendRequestException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingTimeoutException.cs" />
     <Compile Include="Remoting\IChannel.cs" />

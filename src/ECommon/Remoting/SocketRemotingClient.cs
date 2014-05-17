@@ -14,9 +14,9 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingClient
     {
+        private ClientSocket _clientSocket;
         private readonly string _address;
         private readonly int _port;
-        private readonly ClientSocket _clientSocket;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _responseMessageQueue;
         private readonly IScheduleService _scheduleService;
@@ -25,6 +25,8 @@ namespace ECommon.Remoting
         private readonly Worker _processResponseMessageWorker;
         private readonly Worker _reconnectWorker;
         private int _scanTimeoutRequestTaskId;
+
+        public event Action<bool> ClientSocketConnectionChanged;
 
         public SocketRemotingClient() : this(SocketUtils.GetLocalIPV4().ToString(), 5000) { }
         public SocketRemotingClient(string address, int port, ISocketEventListener socketEventListener = null)
@@ -60,6 +62,8 @@ namespace ECommon.Remoting
         }
         public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
         {
+            EnsureServerAvailable();
+
             var message = RemotingUtil.BuildRequestMessage(request);
             var taskCompletionSource = new TaskCompletionSource<RemotingResponse>();
             var responseFuture = new ResponseFuture(request, timeoutMillis, taskCompletionSource);
@@ -87,6 +91,8 @@ namespace ECommon.Remoting
         }
         public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis)
         {
+            EnsureServerAvailable();
+
             var message = RemotingUtil.BuildRequestMessage(request);
             var taskCompletionSource = new TaskCompletionSource<RemotingResponse>();
             var responseFuture = new ResponseFuture(request, timeoutMillis, taskCompletionSource);
@@ -102,6 +108,8 @@ namespace ECommon.Remoting
         }
         public void InvokeOneway(RemotingRequest request, int timeoutMillis)
         {
+            EnsureServerAvailable();
+
             request.IsOneway = true;
             _clientSocket.SendMessage(RemotingUtil.BuildRequestMessage(request), x => { });
         }
@@ -133,7 +141,7 @@ namespace ECommon.Remoting
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
                     responseFuture.CompleteRequestTask(null);
-                    _logger.InfoFormat("Removed timeout request:{0}", responseFuture.Request);
+                    _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
                 }
             }
         }
@@ -150,9 +158,32 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
-            if (_clientSocket.Reconnect())
+            var success = false;
+            try
+            {
+                _clientSocket.Shutdown();
+                _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
+                _clientSocket.Connect(_address, _port);
+                _clientSocket.Start(responseMessage => _responseMessageQueue.Add(responseMessage));
+                success = true;
+            }
+            catch { }
+
+            if (success)
             {
                 _reconnectWorker.Stop();
+                if (ClientSocketConnectionChanged != null)
+                {
+                    ClientSocketConnectionChanged(true);
+                }
+                _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
+            }
+        }
+        private void EnsureServerAvailable()
+        {
+            if (!_clientSocket.IsConnected)
+            {
+                throw new RemotingServerUnAvailableException(_address, _port);
             }
         }
 
@@ -177,14 +208,13 @@ namespace ECommon.Remoting
             {
                 if (SocketUtils.IsSocketDisconnectedException(socketException))
                 {
-                    _socketRemotingClient._logger.DebugFormat("Server[address={0}] disconnected, start to reconnect.", socketInfo.SocketRemotingEndpointAddress);
+                    if (_socketRemotingClient.ClientSocketConnectionChanged != null)
+                    {
+                        _socketRemotingClient.ClientSocketConnectionChanged(false);
+                    }
+                    _socketRemotingClient._logger.InfoFormat("Server[address={0}] disconnected, start to reconnect.", socketInfo.SocketRemotingEndpointAddress);
                     _socketRemotingClient._reconnectWorker.Start();
                 }
-                else
-                {
-                    _socketRemotingClient._logger.Error(string.Format("SocketException[address={0},errorCode={1}]", socketInfo.SocketRemotingEndpointAddress, socketException.SocketErrorCode), socketException);
-                }
-
                 if (_socketRemotingClient._socketEventListener != null)
                 {
                     _socketRemotingClient._socketEventListener.OnSocketException(socketInfo, socketException);
