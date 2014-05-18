@@ -212,7 +212,7 @@ namespace ECommon.Remoting
                     {
                         _socketRemotingClient.ClientSocketConnectionChanged(false);
                     }
-                    _socketRemotingClient._logger.InfoFormat("Server[address={0}] disconnected, start to reconnect.", socketInfo.SocketRemotingEndpointAddress);
+                    _socketRemotingClient._logger.ErrorFormat("Server[address={0}] disconnected, start to reconnect.", socketInfo.SocketRemotingEndpointAddress);
                     _socketRemotingClient._reconnectWorker.Start();
                 }
                 if (_socketRemotingClient._socketEventListener != null)
