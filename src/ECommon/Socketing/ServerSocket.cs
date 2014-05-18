@@ -83,9 +83,13 @@ namespace ECommon.Socketing
         }
         public void Shutdown()
         {
-            _listenNewClientWorker.Stop();
-            _socket.Shutdown(SocketShutdown.Both);
-            _socket.Close();
+            try
+            {
+                _listenNewClientWorker.Stop();
+                _socket.Shutdown(SocketShutdown.Both);
+                _socket.Close();
+            }
+            catch { }
         }
 
         private void NotifyNewSocketAccepted(SocketInfo socketInfo)
