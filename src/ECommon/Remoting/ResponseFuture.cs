@@ -5,30 +5,31 @@ namespace ECommon.Remoting
 {
     public class ResponseFuture
     {
-        private long _timeoutMillis;
         private DateTime _beginTime;
-        private TaskCompletionSource<RemotingResponse> _requestTaskCompletionSource;
+        private TaskCompletionSource<RemotingResponse> _taskSource;
 
-        public bool SendRequestSuccess { get; set; }
-        public Exception SendException { get; set; }
+        public long TimeoutMillis { get; private set; }
         public RemotingRequest Request { get; private set; }
 
-        public ResponseFuture(RemotingRequest request, long timeoutMillis, TaskCompletionSource<RemotingResponse> requestTaskCompletionSource)
+        public ResponseFuture(RemotingRequest request, long timeoutMillis, TaskCompletionSource<RemotingResponse> taskSource)
         {
-            _beginTime = DateTime.Now;
-            _timeoutMillis = timeoutMillis;
-            _requestTaskCompletionSource = requestTaskCompletionSource;
-            SendRequestSuccess = false;
             Request = request;
+            TimeoutMillis = timeoutMillis;
+            _taskSource = taskSource;
+            _beginTime = DateTime.Now;
         }
 
         public bool IsTimeout()
         {
-            return (DateTime.Now - _beginTime).TotalMilliseconds > _timeoutMillis;
+            return (DateTime.Now - _beginTime).TotalMilliseconds > TimeoutMillis;
         }
-        public void CompleteRequestTask(RemotingResponse response)
+        public void SetResponse(RemotingResponse response)
         {
-            _requestTaskCompletionSource.TrySetResult(response);
+            _taskSource.TrySetResult(response);
+        }
+        public void SetException(Exception exception)
+        {
+            _taskSource.TrySetException(exception);
         }
     }
 }

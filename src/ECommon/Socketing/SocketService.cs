@@ -126,7 +126,7 @@ namespace ECommon.Socketing
             catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
-                _logger.Error(string.Format("Socket {0} has unkonwn exception, remoting endpoint address:{1}",
+                _logger.Error(string.Format("Socket {0} has unknown exception, remoting endpoint address:{1}",
                     operationName,
                     socketInfo.SocketRemotingEndpointAddress), ex);
                 if (exceptionHandler != null)

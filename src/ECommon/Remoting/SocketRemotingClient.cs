@@ -75,16 +75,21 @@ namespace ECommon.Remoting
 
             _clientSocket.SendMessage(message, sendResult => SendMessageCallback(responseFuture, request, _address, sendResult));
 
-            var response = taskCompletionSource.Task.WaitResult<RemotingResponse>(timeoutMillis);
+            var task = taskCompletionSource.Task;
+            var response = task.WaitResult<RemotingResponse>(timeoutMillis);
             if (response == null)
             {
-                if (responseFuture.SendRequestSuccess)
+                if (!task.IsCompleted)
                 {
                     throw new RemotingTimeoutException(_address, request, timeoutMillis);
                 }
+                else if (task.IsFaulted)
+                {
+                    throw new RemotingRequestException(_address, request, task.Exception);
+                }
                 else
                 {
-                    throw new RemotingSendRequestException(_address, request, responseFuture.SendException);
+                    throw new RemotingRequestException(_address, request, "Send remoting request successfully, but the remoting response is null.");
                 }
             }
             return response;
@@ -111,7 +116,13 @@ namespace ECommon.Remoting
             EnsureServerAvailable();
 
             request.IsOneway = true;
-            _clientSocket.SendMessage(RemotingUtil.BuildRequestMessage(request), x => { });
+            _clientSocket.SendMessage(RemotingUtil.BuildRequestMessage(request), sendResult =>
+            {
+                if (!sendResult.Success)
+                {
+                    _logger.ErrorFormat("Send request {0} to channel <{1}> failed, exception:{2}", request, _address, sendResult.Exception);
+                }
+            });
         }
 
         private void ProcessResponseMessage()
@@ -122,37 +133,35 @@ namespace ECommon.Remoting
             ResponseFuture responseFuture;
             if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
             {
-                responseFuture.CompleteRequestTask(remotingResponse);
+                responseFuture.SetResponse(remotingResponse);
             }
         }
         private void ScanTimeoutRequest()
         {
-            var timeoutResponseFutureKeyList = new List<long>();
+            var timeoutKeyList = new List<long>();
             foreach (var entry in _responseFutureDict)
             {
                 if (entry.Value.IsTimeout())
                 {
-                    timeoutResponseFutureKeyList.Add(entry.Key);
+                    timeoutKeyList.Add(entry.Key);
                 }
             }
-            foreach (var key in timeoutResponseFutureKeyList)
+            foreach (var key in timeoutKeyList)
             {
                 ResponseFuture responseFuture;
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
-                    responseFuture.CompleteRequestTask(null);
+                    responseFuture.SetException(new RemotingTimeoutException(_address, responseFuture.Request, responseFuture.TimeoutMillis));
                     _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
                 }
             }
         }
         private void SendMessageCallback(ResponseFuture responseFuture, RemotingRequest request, string address, SendResult sendResult)
         {
-            responseFuture.SendRequestSuccess = sendResult.Success;
-            responseFuture.SendException = sendResult.Exception;
             if (!sendResult.Success)
             {
                 _logger.ErrorFormat("Send request {0} to channel <{1}> failed, exception:{2}", request, address, sendResult.Exception);
-                responseFuture.CompleteRequestTask(null);
+                responseFuture.SetException(new RemotingRequestException(address, request, sendResult.Exception));
                 _responseFutureDict.Remove(request.Sequence);
             }
         }

@@ -50,7 +50,7 @@
     <Compile Include="Logging\EmptyLogger.cs" />
     <Compile Include="Logging\EmptyLoggerFactory.cs" />
     <Compile Include="Remoting\Exceptions\RemotingServerUnAvailableException.cs" />
-    <Compile Include="Remoting\Exceptions\RemotingSendRequestException.cs" />
+    <Compile Include="Remoting\Exceptions\RemotingRequestException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingTimeoutException.cs" />
     <Compile Include="Remoting\IChannel.cs" />
     <Compile Include="Remoting\IRequestHandler.cs" />
