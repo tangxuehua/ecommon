@@ -69,7 +69,7 @@ namespace ECommon.Retring
             }
             catch (Exception ex)
             {
-                _logger.Error("Exception raised when retring action.", ex);
+                _logger.Error("Exception raised when executing action.", ex);
             }
         }
         private bool TryRecursively(string actionName, Func<string, int, int, bool> action, int retriedCount, int maxRetryCount)
@@ -77,7 +77,6 @@ namespace ECommon.Retring
             var success = false;
             try
             {
-                _logger.DebugFormat("Executing action {0}.", actionName);
                 success = action(actionName, retriedCount, maxRetryCount);
                 if (retriedCount > 0)
                 {
@@ -86,12 +85,11 @@ namespace ECommon.Retring
             }
             catch (Exception ex)
             {
-                _logger.Error(string.Format("Exception raised when tring action {0}, retrid count {1}.", actionName, retriedCount), ex);
+                _logger.Error(string.Format("Exception raised when executing action {0}, retrid count {1}.", actionName, retriedCount), ex);
             }
 
             if (success)
             {
-                _logger.DebugFormat("Executed action {0}.", actionName);
                 return true;
             }
             if (retriedCount < maxRetryCount)
@@ -106,7 +104,6 @@ namespace ECommon.Retring
             var success = false;
             try
             {
-                _logger.DebugFormat("Executing action {0}.", actionInfo.Name);
                 success = actionInfo.Action(actionInfo.Data);
             }
             catch (Exception ex)
@@ -117,7 +114,6 @@ namespace ECommon.Retring
             {
                 if (success)
                 {
-                    _logger.DebugFormat("Executed action {0}.", actionInfo.Name);
                     if (actionInfo.Next != null)
                     {
                         TryAction(actionInfo.Next);
