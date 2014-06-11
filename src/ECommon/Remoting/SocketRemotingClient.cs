@@ -38,8 +38,8 @@ namespace ECommon.Remoting
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _responseMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _processResponseMessageWorker = new Worker(ProcessResponseMessage);
-            _reconnectWorker = new Worker(ReconnectServer, 1000);
+            _processResponseMessageWorker = new Worker("ProcessResponseMessage", ProcessResponseMessage);
+            _reconnectWorker = new Worker("ReconnectServer", ReconnectServer, 1000);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -51,7 +51,7 @@ namespace ECommon.Remoting
         {
             _clientSocket.Start(responseMessage => _responseMessageQueue.Add(responseMessage));
             _processResponseMessageWorker.Start();
-            _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask(ScanTimeoutRequest, 1000 * 3, 1000);
+            _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("ScanTimeoutRequest", ScanTimeoutRequest, 1000 * 3, 1000);
         }
         public void Shutdown()
         {

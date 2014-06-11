@@ -19,9 +19,9 @@ namespace ECommon.Retring
         /// <param name="loggerFactory"></param>
         public DefaultActionExecutionService(ILoggerFactory loggerFactory)
         {
-            _logger = loggerFactory.Create(GetType().Name);
+            _logger = loggerFactory.Create(GetType().FullName);
             _actionQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
-            _worker = new Worker(TryTakeAndExecuteAction, DefaultPeriod);
+            _worker = new Worker("TryTakeAndExecuteAction", TryTakeAndExecuteAction, DefaultPeriod);
             _worker.Start();
         }
 
