@@ -66,7 +66,7 @@
     <Compile Include="Remoting\SocketRequestHandlerContext.cs" />
     <Compile Include="Remoting\SocketSetting.cs" />
     <Compile Include="Retring\ActionInfo.cs" />
-    <Compile Include="Retring\DefaultActionExecutionService.cs" />
+    <Compile Include="Retring\ActionExecutionService.cs" />
     <Compile Include="Retring\IActionExecutionService.cs" />
     <Compile Include="Serializing\DefaultBinarySerializer.cs" />
     <Compile Include="Serializing\NotImplementedJsonSerializer.cs" />
@@ -82,7 +82,7 @@
     <Compile Include="Utilities\ObjectId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scheduling\IScheduleService.cs" />
-    <Compile Include="Scheduling\DefaultScheduleService.cs" />
+    <Compile Include="Scheduling\ScheduleService.cs" />
     <Compile Include="Scheduling\Worker.cs" />
     <Compile Include="Socketing\ClientSocket.cs" />
     <Compile Include="Socketing\ISocketEventListener.cs" />

@@ -23,8 +23,8 @@ namespace ECommon.Remoting
         private readonly ILogger _logger;
         private readonly ISocketEventListener _socketEventListener;
         private readonly Worker _processResponseMessageWorker;
-        private readonly Worker _reconnectWorker;
         private int _scanTimeoutRequestTaskId;
+        private int _reconnectServerTaskId;
 
         public event Action<bool> ClientSocketConnectionChanged;
 
@@ -38,8 +38,7 @@ namespace ECommon.Remoting
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _responseMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _processResponseMessageWorker = new Worker("ProcessResponseMessage", ProcessResponseMessage);
-            _reconnectWorker = new Worker("ReconnectServer", ReconnectServer, 1000);
+            _processResponseMessageWorker = new Worker("SocketRemotingClient.ProcessResponseMessage", ProcessResponseMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -51,11 +50,11 @@ namespace ECommon.Remoting
         {
             _clientSocket.Start(responseMessage => _responseMessageQueue.Add(responseMessage));
             _processResponseMessageWorker.Start();
-            _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("ScanTimeoutRequest", ScanTimeoutRequest, 1000 * 3, 1000);
+            _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
         }
         public void Shutdown()
         {
-            _reconnectWorker.Stop();
+            StopReconnectServerTask();
             _processResponseMessageWorker.Stop();
             _scheduleService.ShutdownTask(_scanTimeoutRequestTaskId);
             _clientSocket.Shutdown();
@@ -180,12 +179,27 @@ namespace ECommon.Remoting
 
             if (success)
             {
-                _reconnectWorker.Stop();
+                StopReconnectServerTask();
+                _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
                 if (ClientSocketConnectionChanged != null)
                 {
                     ClientSocketConnectionChanged(true);
                 }
-                _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
+            }
+        }
+        private void StartReconnectServerTask()
+        {
+            if (_reconnectServerTaskId == 0)
+            {
+                _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+            }
+        }
+        private void StopReconnectServerTask()
+        {
+            if (_reconnectServerTaskId > 0)
+            {
+                _scheduleService.ShutdownTask(_reconnectServerTaskId);
+                _reconnectServerTaskId = 0;
             }
         }
         private void EnsureServerAvailable()
@@ -221,8 +235,8 @@ namespace ECommon.Remoting
                     {
                         _socketRemotingClient.ClientSocketConnectionChanged(false);
                     }
-                    _socketRemotingClient._logger.ErrorFormat("Server[address={0}] disconnected, start to reconnect.", socketInfo.SocketRemotingEndpointAddress);
-                    _socketRemotingClient._reconnectWorker.Start();
+                    _socketRemotingClient._logger.ErrorFormat("Server[address={0}] disconnected, start task to reconnect.", socketInfo.SocketRemotingEndpointAddress);
+                    _socketRemotingClient.StartReconnectServerTask();
                 }
                 if (_socketRemotingClient._socketEventListener != null)
                 {

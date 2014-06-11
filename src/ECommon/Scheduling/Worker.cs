@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -12,11 +11,10 @@ namespace ECommon.Scheduling
     /// </summary>
     public class Worker
     {
-        private volatile bool _requestingStop;
         private readonly string _actionName;
         private readonly Action _action;
-        private Thread _thread;
-        private ILogger _logger;
+        private readonly ILogger _logger;
+        private ThreadTask _currentTask;
 
         /// <summary>Returns the loop action name of the current worker.
         /// </summary>
@@ -24,76 +22,60 @@ namespace ECommon.Scheduling
         {
             get { return _actionName; }
         }
-        /// <summary>Returns the thread of the current worker.
-        /// </summary>
-        public Thread Thread
-        {
-            get { return _thread; } 
-        }
         /// <summary>Return the IsAlive status of the current worker thread.
         /// </summary>
         public bool IsAlive
         {
             get
             {
-                return _thread != null && _thread.IsAlive;
+                return _currentTask != null && _currentTask.Thread != null && _currentTask.Thread.IsAlive;
             }
         }
-        /// <summary>Gets or sets the interval which the action executed.
-        /// </summary>
-        public int IntervalMilliseconds { get; set; }
 
         /// <summary>Initialize a new Worker thread with the specified action.
         /// </summary>
-        /// <param name="actionName">The delegate action name.</param>
-        /// <param name="action">The delegate action to run in a loop.</param>
-        public Worker(string actionName, Action action) : this(actionName, action, 0) { }
-        /// <summary>Initialize a new Worker thread with the specified action.
-        /// </summary>
-        /// <param name="actionName">The delegate action name.</param>
-        /// <param name="action">The delegate action to run in a loop.</param>
-        /// <param name="intervalMilliseconds">The action run interval milliseconds.</param>
-        public Worker(string actionName, Action action, int intervalMilliseconds)
+        /// <param name="actionName">The action name.</param>
+        /// <param name="action">The action to run in a loop.</param>
+        public Worker(string actionName, Action action)
         {
             _actionName = actionName;
             _action = action;
-            IntervalMilliseconds = intervalMilliseconds;
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
         /// <summary>Start the worker.
         /// </summary>
         public Worker Start()
         {
-            _requestingStop = false;
-            _thread = new Thread(Loop) { IsBackground = true };
-            _thread.Name = string.Format("Worker Thread {0}", _thread.ManagedThreadId);
-            _thread.Start();
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName + "-" + _thread.ManagedThreadId);
-            _logger.InfoFormat("Worker thread started, nativeThreadId:{0}, loop action:{1}", GetNativeThreadId(_thread), _actionName);
+            var thread = new Thread(Loop) { IsBackground = true };
+            var task = new ThreadTask { Thread = thread, RequestingStop = false };
+
+            thread.Name = string.Format("{0}.Worker", _actionName);
+            thread.Start(task);
+
+            _currentTask = task;
+
+            _logger.DebugFormat("Worker started, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, thread.ManagedThreadId, GetNativeThreadId(thread));
+
             return this;
         }
         /// <summary>Stop the worker.
         /// </summary>
         public Worker Stop()
         {
-            _requestingStop = true;
-            _logger.InfoFormat("Worker thread requesting stop, loop action:{0}", _actionName);
+            _currentTask.RequestingStop = true;
+            _logger.DebugFormat("Worker stop requested, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, _currentTask.Thread.ManagedThreadId, GetNativeThreadId(_currentTask.Thread));
             return this;
         }
 
-        /// <summary>Executes the delegate action until the <see cref="Stop"/> method is called.
-        /// </summary>
-        private void Loop()
+        private void Loop(object parameter)
         {
-            while (!_requestingStop)
+            var task = (ThreadTask)parameter;
+            while (!task.RequestingStop)
             {
                 try
                 {
                     _action();
-                    if (IntervalMilliseconds > 0)
-                    {
-                        Thread.Sleep(IntervalMilliseconds);
-                    }
                 }
                 catch (ThreadAbortException abortException)
                 {
@@ -103,17 +85,23 @@ namespace ECommon.Scheduling
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex);
+                    _logger.Error("Worker action has exception.", ex);
                 }
             }
+            _logger.DebugFormat("Worker exited, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, task.Thread.ManagedThreadId, GetNativeThreadId(task.Thread));
         }
-
         private static int GetNativeThreadId(Thread thread)
         {
             var f = typeof(Thread).GetField("DONT_USE_InternalThread", BindingFlags.GetField | BindingFlags.NonPublic | BindingFlags.Instance);
             var pInternalThread = (IntPtr)f.GetValue(thread);
             var nativeId = Marshal.ReadInt32(pInternalThread, (IntPtr.Size == 8) ? 548 : 348); // found by analyzing the memory
             return nativeId;
+        }
+
+        class ThreadTask
+        {
+            public Thread Thread;
+            public volatile bool RequestingStop;
         }
     }
 }

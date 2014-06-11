@@ -5,13 +5,13 @@ using ECommon.Logging;
 
 namespace ECommon.Scheduling
 {
-    public class DefaultScheduleService : IScheduleService
+    public class ScheduleService : IScheduleService
     {
         private readonly ConcurrentDictionary<int, TimerBasedTask> _taskDict = new ConcurrentDictionary<int, TimerBasedTask>();
         private readonly ILogger _logger;
         private int _maxTaskId;
 
-        public DefaultScheduleService(ILoggerFactory loggerFactory)
+        public ScheduleService(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.Create(GetType().FullName);
         }

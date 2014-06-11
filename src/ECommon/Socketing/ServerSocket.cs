@@ -45,7 +45,7 @@ namespace ECommon.Socketing
                 return;
             }
 
-            _listenNewClientWorker = new Worker("AcceptNewClient", () =>
+            _listenNewClientWorker = new Worker("ServerSocket.AcceptNewClient", () =>
             {
                 _messageReceivedCallback = messageReceivedCallback;
                 _newClientSocketSignal.Reset();
