@@ -18,6 +18,7 @@ namespace ECommon.Socketing
         private ISocketEventListener _socketEventListener;
         private Worker _listenNewClientWorker;
         private ILogger _logger;
+        private bool _isRunning;
 
         public ServerSocket(ISocketEventListener socketEventListener)
         {
@@ -40,13 +41,14 @@ namespace ECommon.Socketing
         }
         public void Start(Action<ReceiveContext> messageReceivedCallback)
         {
-            if (_listenNewClientWorker != null && _listenNewClientWorker.IsAlive)
-            {
-                return;
-            }
+            if (_isRunning) return;
+
+            _isRunning = true;
 
             _listenNewClientWorker = new Worker("ServerSocket.AcceptNewClient", () =>
             {
+                if (!_isRunning) return;
+
                 _messageReceivedCallback = messageReceivedCallback;
                 _newClientSocketSignal.Reset();
 
@@ -54,10 +56,15 @@ namespace ECommon.Socketing
                 {
                     _socket.BeginAccept((asyncResult) =>
                     {
+                        if (!_isRunning) return;
+
                         var clientSocket = _socket.EndAccept(asyncResult);
                         var socketInfo = new SocketInfo(clientSocket);
                         NotifyNewSocketAccepted(socketInfo);
                         _newClientSocketSignal.Set();
+
+                        if (!_isRunning) return;
+
                         _socketService.ReceiveMessage(socketInfo, receivedMessage =>
                         {
                             var receiveContext = new ReceiveContext(socketInfo, receivedMessage, context =>
@@ -77,19 +84,28 @@ namespace ECommon.Socketing
                     _logger.Error("Unknown socket accept exception.", ex);
                 }
 
-                _newClientSocketSignal.WaitOne();
+                if (_isRunning)
+                {
+                    _newClientSocketSignal.WaitOne();
+                }
             });
             _listenNewClientWorker.Start();
         }
         public void Shutdown()
         {
+            _isRunning = false;
             try
             {
-                _listenNewClientWorker.Stop();
                 _socket.Shutdown(SocketShutdown.Both);
                 _socket.Close();
             }
             catch { }
+
+            _listenNewClientWorker.Stop();
+            if (_newClientSocketSignal != null)
+            {
+                _newClientSocketSignal.Set();
+            }
         }
 
         private void NotifyNewSocketAccepted(SocketInfo socketInfo)

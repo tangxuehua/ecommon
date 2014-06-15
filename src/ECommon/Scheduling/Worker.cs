@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
+using ECommon.Utilities;
 
 namespace ECommon.Scheduling
 {
@@ -14,28 +15,19 @@ namespace ECommon.Scheduling
         private readonly string _actionName;
         private readonly Action _action;
         private readonly ILogger _logger;
-        private ThreadTask _currentTask;
+        private WorkerState _currentState;
 
-        /// <summary>Returns the loop action name of the current worker.
+        /// <summary>Returns the action name of the current worker.
         /// </summary>
         public string ActionName
         {
             get { return _actionName; }
         }
-        /// <summary>Return the IsAlive status of the current worker thread.
-        /// </summary>
-        public bool IsAlive
-        {
-            get
-            {
-                return _currentTask != null && _currentTask.Thread != null && _currentTask.Thread.IsAlive;
-            }
-        }
 
-        /// <summary>Initialize a new Worker thread with the specified action.
+        /// <summary>Initialize a new worker with the specified action.
         /// </summary>
         /// <param name="actionName">The action name.</param>
-        /// <param name="action">The action to run in a loop.</param>
+        /// <param name="action">The action to run by the worker.</param>
         public Worker(string actionName, Action action)
         {
             _actionName = actionName;
@@ -43,52 +35,56 @@ namespace ECommon.Scheduling
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
-        /// <summary>Start the worker.
+        /// <summary>Start the worker if it is not running.
         /// </summary>
         public Worker Start()
         {
-            var thread = new Thread(Loop) { IsBackground = true };
-            var task = new ThreadTask { Thread = thread, RequestingStop = false };
+            if (_currentState != null && !_currentState.StopRequested) return this;
 
-            thread.Name = string.Format("{0}.Worker", _actionName);
-            thread.Start(task);
+            var thread = new Thread(Loop)
+            {
+                Name = string.Format("{0}.Worker", _actionName),
+                IsBackground = true
+            };
+            var state = new WorkerState();
 
-            _currentTask = task;
+            thread.Start(state);
 
-            _logger.DebugFormat("Worker started, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, thread.ManagedThreadId, GetNativeThreadId(thread));
+            _currentState = state;
+            _logger.DebugFormat("Worker started, actionName:{0}, id:{1}, managedThreadId:{2}, nativeThreadId:{3}", _actionName, state.Id, thread.ManagedThreadId, GetNativeThreadId(thread));
 
             return this;
         }
-        /// <summary>Stop the worker.
+        /// <summary>Request to stop the worker.
         /// </summary>
         public Worker Stop()
         {
-            _currentTask.RequestingStop = true;
-            _logger.DebugFormat("Worker stop requested, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, _currentTask.Thread.ManagedThreadId, GetNativeThreadId(_currentTask.Thread));
+            _currentState.StopRequested = true;
+            _logger.DebugFormat("Worker stop requested, actionName:{0}, id:{1}", _actionName, _currentState.Id);
             return this;
         }
 
-        private void Loop(object parameter)
+        private void Loop(object data)
         {
-            var task = (ThreadTask)parameter;
-            while (!task.RequestingStop)
+            var state = (WorkerState)data;
+
+            while (!state.StopRequested)
             {
                 try
                 {
                     _action();
                 }
-                catch (ThreadAbortException abortException)
+                catch (ThreadAbortException)
                 {
-                    _logger.Error("caught ThreadAbortException - resetting.", abortException);
+                    _logger.InfoFormat("caught ThreadAbortException, try to resetting, actionName:{0}", _actionName);
                     Thread.ResetAbort();
-                    _logger.Info("ThreadAbortException resetted.");
+                    _logger.InfoFormat("ThreadAbortException resetted, actionName:{0}", _actionName);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Worker action has exception.", ex);
+                    _logger.Error(string.Format("Worker action has exception, actionName:{0}", _actionName), ex);
                 }
             }
-            _logger.DebugFormat("Worker exited, actionName:{0}, managedThreadId:{1}, nativeThreadId:{2}", _actionName, task.Thread.ManagedThreadId, GetNativeThreadId(task.Thread));
         }
         private static int GetNativeThreadId(Thread thread)
         {
@@ -98,10 +94,10 @@ namespace ECommon.Scheduling
             return nativeId;
         }
 
-        class ThreadTask
+        class WorkerState
         {
-            public Thread Thread;
-            public volatile bool RequestingStop;
+            public string Id = ObjectId.GenerateNewStringId();
+            public bool StopRequested;
         }
     }
 }

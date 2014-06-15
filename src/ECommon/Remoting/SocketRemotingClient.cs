@@ -15,14 +15,16 @@ namespace ECommon.Remoting
     public class SocketRemotingClient
     {
         private ClientSocket _clientSocket;
+        private readonly object _lockObject1;
+        private readonly object _lockObject2;
         private readonly string _address;
         private readonly int _port;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
-        private readonly BlockingCollection<byte[]> _responseMessageQueue;
+        private readonly BlockingCollection<byte[]> _messageQueue;
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
         private readonly ISocketEventListener _socketEventListener;
-        private readonly Worker _processResponseMessageWorker;
+        private readonly Worker _worker;
         private int _scanTimeoutRequestTaskId;
         private int _reconnectServerTaskId;
 
@@ -31,14 +33,16 @@ namespace ECommon.Remoting
         public SocketRemotingClient() : this(SocketUtils.GetLocalIPV4().ToString(), 5000) { }
         public SocketRemotingClient(string address, int port, ISocketEventListener socketEventListener = null)
         {
+            _lockObject1 = new object();
+            _lockObject2 = new object();
             _address = address;
             _port = port;
             _socketEventListener = socketEventListener;
             _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
-            _responseMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
+            _messageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _processResponseMessageWorker = new Worker("SocketRemotingClient.ProcessResponseMessage", ProcessResponseMessage);
+            _worker = new Worker("SocketRemotingClient.HandleMessage", HandleMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -48,16 +52,16 @@ namespace ECommon.Remoting
         }
         public void Start()
         {
-            _clientSocket.Start(responseMessage => _responseMessageQueue.Add(responseMessage));
-            _processResponseMessageWorker.Start();
-            _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
+            StartClientSocket();
+            StartHandleMessageWorker();
+            StartScanTimeoutRequestTask();
         }
         public void Shutdown()
         {
+            ShutdownClientSocket();
             StopReconnectServerTask();
-            _processResponseMessageWorker.Stop();
-            _scheduleService.ShutdownTask(_scanTimeoutRequestTaskId);
-            _clientSocket.Shutdown();
+            StopScanTimeoutRequestTask();
+            StopHandleMessageWorker();
         }
         public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
         {
@@ -124,9 +128,16 @@ namespace ECommon.Remoting
             });
         }
 
-        private void ProcessResponseMessage()
+        private void ReceiveMessage(byte[] message)
         {
-            var responseMessage = _responseMessageQueue.Take();
+            _messageQueue.Add(message);
+        }
+        private void HandleMessage()
+        {
+            var responseMessage = _messageQueue.Take();
+
+            if (responseMessage == null) return;
+
             var remotingResponse = RemotingUtil.ParseResponse(responseMessage);
 
             ResponseFuture responseFuture;
@@ -172,7 +183,7 @@ namespace ECommon.Remoting
                 _clientSocket.Shutdown();
                 _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
                 _clientSocket.Connect(_address, _port);
-                _clientSocket.Start(responseMessage => _responseMessageQueue.Add(responseMessage));
+                _clientSocket.Start(ReceiveMessage);
                 success = true;
             }
             catch { }
@@ -187,19 +198,66 @@ namespace ECommon.Remoting
                 }
             }
         }
+        private void StartClientSocket()
+        {
+            _clientSocket.Start(ReceiveMessage);
+        }
+        private void ShutdownClientSocket()
+        {
+            _clientSocket.Shutdown();
+        }
+        private void StartHandleMessageWorker()
+        {
+            _worker.Start();
+        }
+        private void StopHandleMessageWorker()
+        {
+            _worker.Stop();
+            if (_messageQueue.Count == 0)
+            {
+                _messageQueue.Add(null);
+            }
+        }
+        private void StartScanTimeoutRequestTask()
+        {
+            lock (_lockObject1)
+            {
+                if (_scanTimeoutRequestTaskId == 0)
+                {
+                    _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
+                }
+            }
+        }
+        private void StopScanTimeoutRequestTask()
+        {
+            lock (_lockObject1)
+            {
+                if (_scanTimeoutRequestTaskId > 0)
+                {
+                    _scheduleService.ShutdownTask(_scanTimeoutRequestTaskId);
+                    _scanTimeoutRequestTaskId = 0;
+                }
+            }
+        }
         private void StartReconnectServerTask()
         {
-            if (_reconnectServerTaskId == 0)
+            lock (_lockObject2)
             {
-                _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+                if (_reconnectServerTaskId == 0)
+                {
+                    _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+                }
             }
         }
         private void StopReconnectServerTask()
         {
-            if (_reconnectServerTaskId > 0)
+            lock (_lockObject2)
             {
-                _scheduleService.ShutdownTask(_reconnectServerTaskId);
-                _reconnectServerTaskId = 0;
+                if (_reconnectServerTaskId > 0)
+                {
+                    _scheduleService.ShutdownTask(_reconnectServerTaskId);
+                    _reconnectServerTaskId = 0;
+                }
             }
         }
         private void EnsureServerAvailable()
