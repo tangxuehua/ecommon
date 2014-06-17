@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Dynamic;
 using System.Linq;
 using System.Reflection;
 
@@ -11,7 +12,7 @@ namespace ECommon.Dapper
     /// </summary>
     public partial class SqlMapper
     {
-        private static readonly ConcurrentDictionary<Type, List<string>> ParamNameCache = new ConcurrentDictionary<Type, List<string>>();
+        private static readonly ConcurrentDictionary<Type, List<PropertyInfo>> ParamCache = new ConcurrentDictionary<Type, List<PropertyInfo>>();
 
         /// <summary>Insert data into table.
         /// </summary>
@@ -43,21 +44,28 @@ namespace ECommon.Dapper
         public static int Update(this IDbConnection connection, dynamic data, dynamic condition, string table, IDbTransaction transaction = null, int? commandTimeout = null)
         {
             var obj = data as object;
-            var properties = GetProperties(obj);
-            var updateFields = string.Join(",", properties.Select(p => p + " = @" + p));
-
             var conditionObj = condition as object;
+
+            var updatePropertyInfos = GetPropertyInfos(obj);
+            var wherePropertyInfos = GetPropertyInfos(conditionObj);
+
+            var updateProperties = updatePropertyInfos.Select(p => p.Name);
+            var whereProperties = wherePropertyInfos.Select(p => p.Name);
+
+            var updateFields = string.Join(",", updateProperties.Select(p => p + " = @" + p));
             var whereFields = string.Empty;
-            var whereProperties = GetProperties(conditionObj);
-            if (whereProperties.Count > 0)
+
+            if (whereProperties.Any())
             {
-                whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @" + p));
+                whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @w_" + p));
             }
 
             var sql = string.Format("update [{0}] set {1}{2}", table, updateFields, whereFields);
 
             var parameters = new DynamicParameters(data);
-            parameters.AddDynamicParams(condition);
+            var expandoObject = new ExpandoObject() as IDictionary<string, object>;
+            wherePropertyInfos.ForEach(p => expandoObject.Add("w_" + p.Name, p.GetValue(conditionObj, null)));
+            parameters.AddDynamicParams(expandoObject);
 
             return connection.Execute(sql, parameters, transaction, commandTimeout);
         }
@@ -182,6 +190,7 @@ namespace ECommon.Dapper
 
             return string.Format("SELECT {2} FROM [{0}] WHERE {1}", table, wherePart, selectPart);
         }
+
         private static List<string> GetProperties(object obj)
         {
             if (obj == null)
@@ -192,11 +201,19 @@ namespace ECommon.Dapper
             {
                 return (obj as DynamicParameters).ParameterNames.ToList();
             }
+            return GetPropertyInfos(obj).Select(x => x.Name).ToList();
+        }
+        private static List<PropertyInfo> GetPropertyInfos(object obj)
+        {
+            if (obj == null)
+            {
+                return new List<PropertyInfo>();
+            }
 
-            List<string> properties;
-            if (ParamNameCache.TryGetValue(obj.GetType(), out properties)) return properties;
-            properties = obj.GetType().GetProperties(BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.Public).Select(prop => prop.Name).ToList();
-            ParamNameCache[obj.GetType()] = properties;
+            List<PropertyInfo> properties;
+            if (ParamCache.TryGetValue(obj.GetType(), out properties)) return properties.ToList();
+            properties = obj.GetType().GetProperties(BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.Public).ToList();
+            ParamCache[obj.GetType()] = properties;
             return properties;
         }
     }
