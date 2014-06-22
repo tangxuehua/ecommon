@@ -11,7 +11,7 @@ namespace ECommon.Retring
     public class ActionExecutionService : IActionExecutionService
     {
         private const int DefaultPeriod = 5000;
-        private readonly BlockingCollection<ActionInfo> _retryActionQueue;
+        private readonly BlockingCollection<ActionInfo> _retryQueue;
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
 
@@ -20,7 +20,7 @@ namespace ECommon.Retring
         /// <param name="loggerFactory"></param>
         public ActionExecutionService(ILoggerFactory loggerFactory)
         {
-            _retryActionQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
+            _retryQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _logger = loggerFactory.Create(GetType().FullName);
             _scheduleService.ScheduleTask("ActionExecutionService.RetryAction", RetryAction, DefaultPeriod, DefaultPeriod);
@@ -36,13 +36,13 @@ namespace ECommon.Retring
         /// <param name="nextAction"></param>
         public void TryAction(string actionName, Func<bool> action, int maxRetryCount, ActionInfo nextAction)
         {
-            if (TryRecursively(actionName, (x, y, z) => action(), 0, maxRetryCount))
+            if (TryWithMaxCount(actionName, (x, y, z) => action(), 0, maxRetryCount))
             {
                 ExecuteAction(nextAction);
             }
             else
             {
-                _retryActionQueue.Add(new ActionInfo(actionName, obj => action(), null, nextAction));
+                _retryQueue.Add(new ActionInfo(actionName, obj => action(), null, nextAction));
             }
         }
         /// <summary>Try to execute the given action with the given max retry count. If success then returns true; otherwise, returns false.
@@ -53,46 +53,42 @@ namespace ECommon.Retring
         /// <returns></returns>
         public bool TryRecursively(string actionName, Func<bool> action, int maxRetryCount)
         {
-            return TryRecursively(actionName, (x, y, z) => action(), 0, maxRetryCount);
+            return TryWithMaxCount(actionName, (x, y, z) => action(), 0, maxRetryCount);
         }
 
-        private void RetryAction()
-        {
-            var action = _retryActionQueue.Take();
-            try
-            {
-                ExecuteAction(action);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(string.Format("RetryAction has exception, actionName:{0}", action.Name), ex);
-            }
-        }
-        private bool TryRecursively(string actionName, Func<string, int, int, bool> action, int retriedCount, int maxRetryCount)
+        private bool TryWithMaxCount(string actionName, Func<string, int, int, bool> action, int retriedCount, int maxRetryCount)
         {
             var success = false;
             try
             {
                 success = action(actionName, retriedCount, maxRetryCount);
-                if (retriedCount > 0)
-                {
-                    _logger.DebugFormat("Retried action {0} for {1} times.", actionName, retriedCount);
-                }
             }
             catch (Exception ex)
             {
-                _logger.Error(string.Format("Exception raised when executing action {0}, retrid count {1}.", actionName, retriedCount), ex);
+                _logger.Error(string.Format("Exception raised when executing action {0}.", actionName), ex);
             }
 
             if (success)
             {
                 return true;
             }
-            if (retriedCount < maxRetryCount)
+            else if (retriedCount < maxRetryCount)
             {
-                return TryRecursively(actionName, action, retriedCount + 1, maxRetryCount);
+                return TryWithMaxCount(actionName, action, retriedCount + 1, maxRetryCount);
             }
             return false;
+        }
+        private void RetryAction()
+        {
+            var actionInfo = _retryQueue.Take();
+            try
+            {
+                ExecuteAction(actionInfo);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(string.Format("RetryAction has exception, actionName:{0}", actionInfo.Name), ex);
+            }
         }
         private void ExecuteAction(ActionInfo actionInfo)
         {
@@ -119,7 +115,7 @@ namespace ECommon.Retring
                 }
                 else
                 {
-                    _retryActionQueue.Add(actionInfo);
+                    _retryQueue.Add(actionInfo);
                 }
             }
         }
