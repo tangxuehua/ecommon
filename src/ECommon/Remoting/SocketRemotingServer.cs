@@ -50,6 +50,7 @@ namespace ECommon.Remoting
 
             try
             {
+                _logger.DebugFormat("Handling remoting request, request code:{0}, request sequence:{1}", remotingRequest.Code, remotingRequest.Sequence);
                 var remotingResponse = requestHandler.HandleRequest(new SocketRequestHandlerContext(receiveContext), remotingRequest);
                 if (!remotingRequest.IsOneway && remotingResponse != null)
                 {
@@ -70,6 +71,7 @@ namespace ECommon.Remoting
         {
             receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
             receiveContext.MessageHandledCallback(receiveContext);
+            _logger.DebugFormat("Remoting request handled, request code:{0}, request sequence:{1}, response code:{2}, response sequence:{3}", remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
         }
     }
 }
