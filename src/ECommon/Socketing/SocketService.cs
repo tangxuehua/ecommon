@@ -18,6 +18,10 @@ namespace ECommon.Socketing
         }
         public void SendMessage(SocketInfo socketInfo, byte[] message, Action<SendResult> messageSentCallback)
         {
+            if (message.Length == 0)
+            {
+                throw new Exception(string.Format("Send message failed, message length cannot be zero, target socket address:{0}", socketInfo.SocketRemotingEndpointAddress));
+            }
             var wrappedMessage = SocketUtils.BuildMessage(message);
             if (wrappedMessage.Length > 0)
             {
@@ -95,7 +99,15 @@ namespace ECommon.Socketing
                     }
                     else
                     {
-                        receiveState.MessageReceivedCallback(receivedData.ToArray());
+                        try
+                        {
+                            receiveState.MessageReceivedCallback(receivedData.ToArray());
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(string.Format("Exception raised when calling MessageReceivedCallback, source socket:{0}", sourceSocketInfo.SocketRemotingEndpointAddress), ex);
+                        }
+
                         receiveState.MessageSize = null;
                         receivedData.Clear();
                         ReceiveInternal(receiveState, 4);

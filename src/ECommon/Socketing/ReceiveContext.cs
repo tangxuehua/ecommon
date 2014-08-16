@@ -8,6 +8,7 @@ namespace ECommon.Socketing
         public SocketInfo ReplySocketInfo { get; private set; }
         public byte[] ReceivedMessage { get; private set; }
         public byte[] ReplyMessage { get; set; }
+        public Action<SendResult> ReplySentCallback { get; set; }
         public Action<ReceiveContext> MessageHandledCallback { get; private set; }
 
         public ReceiveContext(SocketInfo replySocketInfo, byte[] receivedMessage, Action<ReceiveContext> messageHandledCallback)

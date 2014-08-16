@@ -69,7 +69,13 @@ namespace ECommon.Socketing
                         {
                             var receiveContext = new ReceiveContext(socketInfo, receivedMessage, context =>
                             {
-                                _socketService.SendMessage(context.ReplySocketInfo, context.ReplyMessage, sendResult => { });
+                                _socketService.SendMessage(context.ReplySocketInfo, context.ReplyMessage, sendResult =>
+                                {
+                                    if (context.ReplySentCallback != null)
+                                    {
+                                        context.ReplySentCallback(sendResult);
+                                    }
+                                });
                             });
                             _messageReceivedCallback(receiveContext);
                         });

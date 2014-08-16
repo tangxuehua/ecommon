@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
@@ -70,8 +71,24 @@ namespace ECommon.Remoting
         private void DoMessageHandledCallback(ReceiveContext receiveContext, RemotingRequest remotingRequest, RemotingResponse remotingResponse)
         {
             receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
+            receiveContext.ReplySentCallback = sendResult =>
+            {
+                if (!sendResult.Success && sendResult.Exception != null)
+                {
+                    var errorMessage = "[" + sendResult.Exception.GetType().Name + "]";
+                    var socketException = sendResult.Exception as SocketException;
+                    if (socketException != null)
+                    {
+                        errorMessage = "[" + sendResult.Exception.GetType().Name + ", ErrorCode:" + socketException.SocketErrorCode + "]";
+                    }
+                    _logger.DebugFormat("Remoting request handled, reply sent status:{0}, errorMessage:{1}, request code:{2}, request sequence:{3}, response code:{4}, response sequence:{5}", sendResult.Success, errorMessage, remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
+                }
+                else
+                {
+                    _logger.DebugFormat("Remoting request handled, reply sent status:{0}, request code:{1}, request sequence:{2}, response code:{3}, response sequence:{4}", sendResult.Success, remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
+                }
+            };
             receiveContext.MessageHandledCallback(receiveContext);
-            _logger.DebugFormat("Remoting request handled, request code:{0}, request sequence:{1}, response code:{2}, response sequence:{3}", remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
         }
     }
 }
