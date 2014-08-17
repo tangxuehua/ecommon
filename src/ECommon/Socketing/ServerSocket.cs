@@ -103,9 +103,14 @@ namespace ECommon.Socketing
             try
             {
                 _socket.Shutdown(SocketShutdown.Both);
-                _socket.Close();
             }
             catch { }
+            try
+            {
+                _socket.Close();
+            }
+            catch
+            { }
 
             _listenNewClientWorker.Stop();
             if (_newClientSocketSignal != null)

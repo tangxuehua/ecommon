@@ -58,9 +58,14 @@ namespace ECommon.Socketing
             try
             {
                 _socket.Shutdown(SocketShutdown.Both);
-                _socket.Close();
             }
             catch { }
+            try
+            {
+                _socket.Close();
+            }
+            catch
+            { }
 
             return this;
         }

@@ -59,6 +59,8 @@ namespace ECommon.Scheduling
         /// </summary>
         public Worker Stop()
         {
+            if (_currentState == null) return this;
+
             _currentState.StopRequested = true;
             _logger.DebugFormat("Worker stop requested, actionName:{0}, id:{1}", _actionName, _currentState.Id);
             return this;

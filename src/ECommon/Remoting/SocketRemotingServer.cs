@@ -88,6 +88,7 @@ namespace ECommon.Remoting
                     _logger.DebugFormat("Remoting request handled, reply sent status:{0}, request code:{1}, request sequence:{2}, response code:{3}, response sequence:{4}", sendResult.Success, remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
                 }
             };
+            _logger.DebugFormat("Begin to send reply, request code:{0}, request sequence:{1}, response code:{2}, response sequence:{3}", remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
             receiveContext.MessageHandledCallback(receiveContext);
         }
     }

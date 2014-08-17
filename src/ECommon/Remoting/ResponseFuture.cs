@@ -5,9 +5,9 @@ namespace ECommon.Remoting
 {
     public class ResponseFuture
     {
-        private DateTime _beginTime;
         private TaskCompletionSource<RemotingResponse> _taskSource;
 
+        public DateTime BeginTime { get; private set; }
         public long TimeoutMillis { get; private set; }
         public RemotingRequest Request { get; private set; }
 
@@ -16,12 +16,12 @@ namespace ECommon.Remoting
             Request = request;
             TimeoutMillis = timeoutMillis;
             _taskSource = taskSource;
-            _beginTime = DateTime.Now;
+            BeginTime = DateTime.Now;
         }
 
         public bool IsTimeout()
         {
-            return (DateTime.Now - _beginTime).TotalMilliseconds > TimeoutMillis;
+            return (DateTime.Now - BeginTime).TotalMilliseconds > TimeoutMillis;
         }
         public void SetResponse(RemotingResponse response)
         {

@@ -144,6 +144,7 @@ namespace ECommon.Remoting
             if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
             {
                 responseFuture.SetResponse(remotingResponse);
+                _logger.DebugFormat("Remoting response back, request code:{0}, time spent:{1}", responseFuture.Request.Code, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
             }
         }
         private void ScanTimeoutRequest()
