@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
@@ -40,22 +39,24 @@ namespace ECommon.Remoting
         private void HandleRemotingRequest(ReceiveContext receiveContext)
         {
             var remotingRequest = RemotingUtil.ParseRequest(receiveContext.ReceivedMessage);
+            var requestHandlerContext = new SocketRequestHandlerContext(receiveContext, remotingRequest, _logger);
+
             IRequestHandler requestHandler;
             if (!_requestHandlerDict.TryGetValue(remotingRequest.Code, out requestHandler))
             {
                 var errorMessage = string.Format("No request handler found for remoting request, request code:{0}", remotingRequest.Code);
                 _logger.Error(errorMessage);
-                DoMessageHandledCallback(receiveContext, remotingRequest, new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
+                requestHandlerContext.SendRemotingResponse(new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
                 return;
             }
 
             try
             {
                 _logger.DebugFormat("Handling remoting request, request code:{0}, request sequence:{1}", remotingRequest.Code, remotingRequest.Sequence);
-                var remotingResponse = requestHandler.HandleRequest(new SocketRequestHandlerContext(receiveContext), remotingRequest);
+                var remotingResponse = requestHandler.HandleRequest(requestHandlerContext, remotingRequest);
                 if (!remotingRequest.IsOneway && remotingResponse != null)
                 {
-                    DoMessageHandledCallback(receiveContext, remotingRequest, remotingResponse);
+                    requestHandlerContext.SendRemotingResponse(remotingResponse);
                 }
             }
             catch (Exception ex)
@@ -64,32 +65,9 @@ namespace ECommon.Remoting
                 _logger.Error(errorMessage, ex);
                 if (!remotingRequest.IsOneway)
                 {
-                    DoMessageHandledCallback(receiveContext, remotingRequest, new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
                 }
             }
-        }
-        private void DoMessageHandledCallback(ReceiveContext receiveContext, RemotingRequest remotingRequest, RemotingResponse remotingResponse)
-        {
-            receiveContext.ReplyMessage = RemotingUtil.BuildResponseMessage(remotingResponse);
-            receiveContext.ReplySentCallback = sendResult =>
-            {
-                if (!sendResult.Success && sendResult.Exception != null)
-                {
-                    var errorMessage = "[" + sendResult.Exception.GetType().Name + "]";
-                    var socketException = sendResult.Exception as SocketException;
-                    if (socketException != null)
-                    {
-                        errorMessage = "[" + sendResult.Exception.GetType().Name + ", ErrorCode:" + socketException.SocketErrorCode + "]";
-                    }
-                    _logger.DebugFormat("Remoting request handled, reply sent status:{0}, errorMessage:{1}, request code:{2}, request sequence:{3}, response code:{4}, response sequence:{5}", sendResult.Success, errorMessage, remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
-                }
-                else
-                {
-                    _logger.DebugFormat("Remoting request handled, reply sent status:{0}, request code:{1}, request sequence:{2}, response code:{3}, response sequence:{4}", sendResult.Success, remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
-                }
-            };
-            _logger.DebugFormat("Begin to send reply, request code:{0}, request sequence:{1}, response code:{2}, response sequence:{3}", remotingRequest.Code, remotingRequest.Sequence, remotingResponse.Code, remotingResponse.Sequence);
-            receiveContext.MessageHandledCallback(receiveContext);
         }
     }
 }
