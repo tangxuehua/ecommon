@@ -192,11 +192,6 @@ namespace ECommon.Remoting
             if (success)
             {
                 StopReconnectServerTask();
-                _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
-                if (ClientSocketConnectionChanged != null)
-                {
-                    ClientSocketConnectionChanged(true);
-                }
             }
         }
         private void StartClientSocket()
@@ -240,13 +235,18 @@ namespace ECommon.Remoting
                 }
             }
         }
-        private void StartReconnectServerTask()
+        private void StartReconnectServerTask(SocketInfo socketInfo)
         {
             lock (_lockObject2)
             {
                 if (_reconnectServerTaskId == 0)
                 {
+                    if (ClientSocketConnectionChanged != null)
+                    {
+                        ClientSocketConnectionChanged(false);
+                    }
                     _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+                    _logger.ErrorFormat("Server[address={0}] disconnected, start task to reconnect.", socketInfo.SocketRemotingEndpointAddress);
                 }
             }
         }
@@ -258,6 +258,11 @@ namespace ECommon.Remoting
                 {
                     _scheduleService.ShutdownTask(_reconnectServerTaskId);
                     _reconnectServerTaskId = 0;
+                    _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
+                    if (ClientSocketConnectionChanged != null)
+                    {
+                        ClientSocketConnectionChanged(true);
+                    }
                 }
             }
         }
@@ -290,12 +295,7 @@ namespace ECommon.Remoting
             {
                 if (SocketUtils.IsSocketDisconnectedException(socketException))
                 {
-                    if (_socketRemotingClient.ClientSocketConnectionChanged != null)
-                    {
-                        _socketRemotingClient.ClientSocketConnectionChanged(false);
-                    }
-                    _socketRemotingClient._logger.ErrorFormat("Server[address={0}] disconnected, start task to reconnect.", socketInfo.SocketRemotingEndpointAddress);
-                    _socketRemotingClient.StartReconnectServerTask();
+                    _socketRemotingClient.StartReconnectServerTask(socketInfo);
                 }
                 if (_socketRemotingClient._socketEventListener != null)
                 {
