@@ -31,6 +31,7 @@ namespace ECommon.Socketing
         public ClientSocket Connect(string address, int port)
         {
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _socket.ReceiveBufferSize = 8192;
             _socket.Connect(address, port);
             _socketInfo = new SocketInfo(_socket);
             return this;
@@ -50,7 +51,9 @@ namespace ECommon.Socketing
                         _logger.Error(ex);
                     }
                 });
-            });
+            }, TaskCreationOptions.None)
+            .ContinueWith(task => _logger.Error(task.Exception), TaskContinuationOptions.OnlyOnFaulted);
+
             return this;
         }
         public ClientSocket Shutdown()

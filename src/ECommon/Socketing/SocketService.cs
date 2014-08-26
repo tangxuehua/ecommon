@@ -72,6 +72,7 @@ namespace ECommon.Socketing
             var bytesRead = 0;
             if (!sourceSocket.Connected)
             {
+                _logger.ErrorFormat("Socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
                 return;
             }
 
