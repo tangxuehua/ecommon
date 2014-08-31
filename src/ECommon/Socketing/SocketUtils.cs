@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace ECommon.Socketing
 {
@@ -29,19 +30,32 @@ namespace ECommon.Socketing
         }
         public static int ParseMessageLength(byte[] buffer)
         {
-            var data = new byte[4];
-            for (var i = 0; i < 4; i++)
+            var data1 = new byte[2];
+            for (var i = 0; i < 2; i++)
             {
-                data[i] = buffer[i];
+                data1[i] = buffer[i];
             }
-            return BitConverter.ToInt32(data, 0);
+            var flag = Encoding.UTF8.GetString(data1);
+            if (flag != "S:")
+            {
+                throw new Exception("Invalid message header flag:" + flag);
+            }
+
+            var data2 = new byte[4];
+            for (var i = 2; i < 6; i++)
+            {
+                data2[i - 2] = buffer[i];
+            }
+            return BitConverter.ToInt32(data2, 0);
         }
         public static byte[] BuildMessage(byte[] data)
         {
+            var flag = Encoding.UTF8.GetBytes("S:");
             var header = BitConverter.GetBytes(data.Length);
-            var message = new byte[header.Length + data.Length];
-            header.CopyTo(message, 0);
-            data.CopyTo(message, header.Length);
+            var message = new byte[flag.Length + header.Length + data.Length];
+            flag.CopyTo(message, 0);
+            header.CopyTo(message, flag.Length);
+            data.CopyTo(message, flag.Length + header.Length);
             return message;
         }
     }
