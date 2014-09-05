@@ -81,8 +81,7 @@ namespace ECommon.Socketing
 
             if (bytesRead <= 0)
             {
-                _logger.ErrorFormat("Socket EndReceive completed, but no bytes were read, try to receive data again, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
-                ReceiveInternal(receiveState);
+                _logger.ErrorFormat("Socket EndReceive completed, but no bytes were read, stop to receive data again, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
                 return;
             }
 
