@@ -6,10 +6,10 @@ namespace ECommon.Socketing
 {
     public class ReceiveState
     {
-        public const int BufferSize = 1024;
+        public const int BufferSize = 8192;
         public byte[] Buffer = new byte[BufferSize];
         public int ReceiveSize { get; set; }
-        public List<byte> Data = new List<byte>();
+        public List<byte> ReceivedData = new List<byte>();
         public int? MessageSize;
         public SocketInfo SourceSocket { get; private set; }
         public Action<byte[]> MessageReceivedCallback { get; private set; }

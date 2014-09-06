@@ -8,6 +8,8 @@ namespace ECommon.Socketing
 {
     public class SocketUtils
     {
+        public const int MessageHeaderLength = 6;
+
         public static string GetLocalIPV4()
         {
             return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(x => x.AddressFamily == AddressFamily.InterNetwork).ToString();
@@ -28,8 +30,9 @@ namespace ECommon.Socketing
                    errorCode == SocketError.AddressNotAvailable ||
                    errorCode == SocketError.TimedOut;
         }
-        public static int ParseMessageLength(byte[] buffer)
+        public static int ParseMessageLength(byte[] buffer, out string errorMessage)
         {
+            errorMessage = null;
             var data1 = new byte[2];
             for (var i = 0; i < 2; i++)
             {
@@ -38,7 +41,8 @@ namespace ECommon.Socketing
             var flag = Encoding.UTF8.GetString(data1);
             if (flag != "S:")
             {
-                throw new Exception("Invalid message header flag:" + flag);
+                errorMessage = "Invalid message header flag:" + flag;
+                return -1;
             }
 
             var data2 = new byte[4];
@@ -46,7 +50,14 @@ namespace ECommon.Socketing
             {
                 data2[i - 2] = buffer[i];
             }
-            return BitConverter.ToInt32(data2, 0);
+            var length = BitConverter.ToInt32(data2, 0);
+            if (length <= 0)
+            {
+                errorMessage = "Invalid message length:" + length;
+                return -1;
+            }
+
+            return length;
         }
         public static byte[] BuildMessage(byte[] data)
         {

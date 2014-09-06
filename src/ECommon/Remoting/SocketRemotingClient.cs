@@ -58,10 +58,10 @@ namespace ECommon.Remoting
         }
         public void Shutdown()
         {
-            ShutdownClientSocket();
             StopReconnectServerTask();
             StopScanTimeoutRequestTask();
             StopHandleMessageWorker();
+            ShutdownClientSocket();
         }
         public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
         {
@@ -179,19 +179,28 @@ namespace ECommon.Remoting
         private void ReconnectServer()
         {
             var success = false;
-            try
+
+            if (!_clientSocket.IsConnected)
             {
-                _clientSocket.Shutdown();
-                _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
-                _clientSocket.Connect(_address, _port);
-                _clientSocket.Start(ReceiveMessage);
+                try
+                {
+                    _clientSocket.Shutdown();
+                    _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
+                    _clientSocket.Connect(_address, _port);
+                    _clientSocket.Start(ReceiveMessage);
+                    success = true;
+                }
+                catch { }
+            }
+            else
+            {
                 success = true;
             }
-            catch { }
 
             if (success)
             {
                 StopReconnectServerTask();
+                OnServerReconnected(_clientSocket.SocketInfo);
             }
         }
         private void StartClientSocket()
@@ -241,12 +250,8 @@ namespace ECommon.Remoting
             {
                 if (_reconnectServerTaskId == 0)
                 {
-                    if (ClientSocketConnectionChanged != null)
-                    {
-                        ClientSocketConnectionChanged(false);
-                    }
                     _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
-                    _logger.ErrorFormat("Server[address={0}] disconnected, start task to reconnect.", socketInfo.SocketRemotingEndpointAddress);
+                    _logger.InfoFormat("Started reconnect server[address={0}] task.", socketInfo.SocketRemotingEndpointAddress);
                 }
             }
         }
@@ -258,14 +263,26 @@ namespace ECommon.Remoting
                 {
                     _scheduleService.ShutdownTask(_reconnectServerTaskId);
                     _reconnectServerTaskId = 0;
-                    _logger.InfoFormat("Server[address={0}] reconnected.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
-                    if (ClientSocketConnectionChanged != null)
-                    {
-                        ClientSocketConnectionChanged(true);
-                    }
                 }
             }
         }
+        private void OnServerReconnected(SocketInfo socketInfo)
+        {
+            _logger.InfoFormat("Server[address={0}] reconnected.", socketInfo.SocketRemotingEndpointAddress);
+            if (ClientSocketConnectionChanged != null)
+            {
+                ClientSocketConnectionChanged(true);
+            }
+        }
+        private void OnServerDisconnected(SocketInfo socketInfo)
+        {
+            _logger.InfoFormat("Server[address={0}] disconnected.", socketInfo.SocketRemotingEndpointAddress);
+            if (ClientSocketConnectionChanged != null)
+            {
+                ClientSocketConnectionChanged(false);
+            }
+        }
+
         private void EnsureServerAvailable()
         {
             if (!_clientSocket.IsConnected)
@@ -295,6 +312,7 @@ namespace ECommon.Remoting
             {
                 if (SocketUtils.IsSocketDisconnectedException(socketException))
                 {
+                    _socketRemotingClient.OnServerDisconnected(socketInfo);
                     _socketRemotingClient.StartReconnectServerTask(socketInfo);
                 }
                 if (_socketRemotingClient._socketEventListener != null)

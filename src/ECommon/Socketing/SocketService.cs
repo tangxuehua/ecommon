@@ -40,7 +40,7 @@ namespace ECommon.Socketing
         }
         public void ReceiveMessage(SocketInfo sourceSocket, Action<byte[]> messageReceivedCallback)
         {
-            ReceiveInternal(new ReceiveState(sourceSocket, 6, messageReceivedCallback));
+            ReceiveInternal(new ReceiveState(sourceSocket, SocketUtils.MessageHeaderLength, messageReceivedCallback));
         }
 
         private void ReceiveInternal(ReceiveState receiveState)
@@ -69,32 +69,39 @@ namespace ECommon.Socketing
             var receiveState = (ReceiveState)asyncResult.AsyncState;
             var sourceSocketInfo = receiveState.SourceSocket;
             var sourceSocket = sourceSocketInfo.InnerSocket;
-            var receivedData = receiveState.Data;
+            var receivedData = receiveState.ReceivedData;
             var bytesRead = 0;
+
             if (!sourceSocket.Connected)
             {
-                _logger.ErrorFormat("Socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
+                _logger.InfoFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
                 return;
             }
 
             SafeSocketOperation("EndReceive", sourceSocketInfo, () => bytesRead = sourceSocket.EndReceive(asyncResult));
 
-            if (bytesRead <= 0)
+            if (!sourceSocket.Connected)
             {
-                _logger.ErrorFormat("Socket EndReceive completed, but no bytes were read, stop to receive data again, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
+                _logger.InfoFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
                 return;
             }
 
-            //Receive a new message
+            if (bytesRead <= 0)
+            {
+                _logger.InfoFormat("Source socket EndReceive completed, but no bytes were read, stop to receive data from this source socket, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
+                return;
+            }
+
+            //Receive the header of the message
             if (receiveState.MessageSize == null)
             {
-                if (bytesRead < 6)
+                if (bytesRead < SocketUtils.MessageHeaderLength)
                 {
                     for (var index = 0; index < bytesRead; index++)
                     {
                         receivedData.Add(receiveState.Buffer[index]);
                     }
-                    var remainSize = 6 - receivedData.Count;
+                    var remainSize = SocketUtils.MessageHeaderLength - receivedData.Count;
                     if (remainSize > 0)
                     {
                         _logger.DebugFormat("Received part of message header, receivedSize:{0}, remainSize:{1}, bytesRead:{2}", receivedData.Count, remainSize, bytesRead);
@@ -103,59 +110,66 @@ namespace ECommon.Socketing
                     }
                     else
                     {
-                        receiveState.MessageSize = SocketUtils.ParseMessageLength(receivedData.ToArray());
-                        _logger.Debug("Receive New Message, Size:" + receiveState.MessageSize + ", bytesRead:" + bytesRead);
-                        var size = receiveState.MessageSize <= ReceiveState.BufferSize ? receiveState.MessageSize.Value : ReceiveState.BufferSize;
-                        receivedData.Clear();
-                        receiveState.ClearBuffer();
-                        receiveState.ReceiveSize = size;
-                        ReceiveInternal(receiveState);
+                        StartToReceiveMessageBody(receiveState, receivedData.ToArray(), sourceSocketInfo, bytesRead);
                     }
                 }
                 else
                 {
-                    receiveState.MessageSize = SocketUtils.ParseMessageLength(receiveState.Buffer);
-                    _logger.Debug("Receive New Message, Size:" + receiveState.MessageSize + ", bytesRead:" + bytesRead);
-                    var size = receiveState.MessageSize <= ReceiveState.BufferSize ? receiveState.MessageSize.Value : ReceiveState.BufferSize;
-                    receivedData.Clear();
-                    receiveState.ClearBuffer();
-                    receiveState.ReceiveSize = size;
-                    ReceiveInternal(receiveState);
+                    StartToReceiveMessageBody(receiveState, receiveState.Buffer, sourceSocketInfo, bytesRead);
                 }
+                return;
             }
-            //Receive data of the current message.
+
+            //Receive the body of the message.
+            for (var index = 0; index < bytesRead; index++)
+            {
+                receivedData.Add(receiveState.Buffer[index]);
+            }
+            if (receivedData.Count < receiveState.MessageSize.Value)
+            {
+                var remainSize = receiveState.MessageSize.Value - receivedData.Count;
+                var size = remainSize <= ReceiveState.BufferSize ? remainSize : ReceiveState.BufferSize;
+                _logger.DebugFormat("Receive part of Message, receivedSize:{0}, remainSize:{1}, messageSize:{2}", receivedData.Count, remainSize, receiveState.MessageSize.Value);
+                receiveState.ReceiveSize = size;
+                ReceiveInternal(receiveState);
+            }
             else
             {
-                for (var index = 0; index < bytesRead; index++)
+                try
                 {
-                    receivedData.Add(receiveState.Buffer[index]);
+                    _logger.DebugFormat("Receive last part of Message, bytesRead:{0}, messageSize:{1}", bytesRead, receiveState.MessageSize.Value);
+                    receiveState.MessageReceivedCallback(receivedData.ToArray());
                 }
-                if (receivedData.Count < receiveState.MessageSize.Value)
+                catch (Exception ex)
                 {
-                    var remainSize = receiveState.MessageSize.Value - receivedData.Count;
-                    var size = remainSize <= ReceiveState.BufferSize ? remainSize : ReceiveState.BufferSize;
-                    _logger.DebugFormat("Receive part of Message, receivedSize:{0}, remainSize:{1}, messageSize:{2}", receivedData.Count, remainSize, receiveState.MessageSize.Value);
-                    receiveState.ReceiveSize = size;
-                    ReceiveInternal(receiveState);
+                    _logger.Error(string.Format("Exception raised when calling MessageReceivedCallback, source socket address:{0}", sourceSocketInfo.SocketRemotingEndpointAddress), ex);
                 }
-                else
-                {
-                    try
-                    {
-                        _logger.DebugFormat("Receive last part of Message, bytesRead:{0}, messageSize:{1}", bytesRead, receiveState.MessageSize.Value);
-                        receiveState.MessageReceivedCallback(receivedData.ToArray());
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Error(string.Format("Exception raised when calling MessageReceivedCallback, source socket:{0}", sourceSocketInfo.SocketRemotingEndpointAddress), ex);
-                    }
 
-                    receiveState.MessageSize = null;
-                    receivedData.Clear();
-                    receiveState.ClearBuffer();
-                    receiveState.ReceiveSize = 6;
-                    ReceiveInternal(receiveState);
-                }
+                receiveState.MessageSize = null;
+                receivedData.Clear();
+                receiveState.ClearBuffer();
+                receiveState.ReceiveSize = SocketUtils.MessageHeaderLength;
+                ReceiveInternal(receiveState);
+            }
+        }
+        private void StartToReceiveMessageBody(ReceiveState receiveState, byte[] messageHeaderBuffer, SocketInfo sourceSocketInfo, int bytesRead)
+        {
+            string errorMessage;
+            var messageLength = SocketUtils.ParseMessageLength(messageHeaderBuffer, out errorMessage);
+
+            if (messageLength > 0)
+            {
+                receiveState.MessageSize = messageLength;
+                _logger.Debug("Start to receive new message, message body size:" + receiveState.MessageSize + ", bytesRead:" + bytesRead);
+                var size = receiveState.MessageSize <= ReceiveState.BufferSize ? receiveState.MessageSize.Value : ReceiveState.BufferSize;
+                receiveState.ReceivedData.Clear();
+                receiveState.ClearBuffer();
+                receiveState.ReceiveSize = size;
+                ReceiveInternal(receiveState);
+            }
+            else
+            {
+                _logger.ErrorFormat("Parse message length failed, source socket address:{0}, receiveSize:{1}, bytesRead:{2}, errorMessage:{3}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize, bytesRead, errorMessage);
             }
         }
         private void SafeSocketOperation(string operationName, SocketInfo socketInfo, Action action, Action<Exception> exceptionHandler = null)
