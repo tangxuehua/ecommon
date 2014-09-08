@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using ECommon.Components;
@@ -74,7 +73,7 @@ namespace ECommon.Socketing
 
             if (!sourceSocket.Connected)
             {
-                _logger.InfoFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
+                _logger.DebugFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
                 return;
             }
 
@@ -82,13 +81,14 @@ namespace ECommon.Socketing
 
             if (!sourceSocket.Connected)
             {
-                _logger.InfoFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
+                _logger.DebugFormat("Source socket disconnected, address:" + sourceSocketInfo.SocketRemotingEndpointAddress);
                 return;
             }
 
             if (bytesRead <= 0)
             {
-                _logger.InfoFormat("Source socket EndReceive completed, but no bytes were read, stop to receive data from this source socket, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
+                sourceSocketInfo.Close();
+                _logger.DebugFormat("Source socket EndReceive completed, but no bytes were read, close the source socket, source socket address:{0}, receiveSize:{1}", sourceSocketInfo.SocketRemotingEndpointAddress, receiveState.ReceiveSize);
                 return;
             }
 
@@ -160,7 +160,7 @@ namespace ECommon.Socketing
             if (messageLength > 0)
             {
                 receiveState.MessageSize = messageLength;
-                _logger.Debug("Start to receive new message, message body size:" + receiveState.MessageSize + ", bytesRead:" + bytesRead);
+                _logger.DebugFormat("Start to receive new message, message body size:{0}, bytesRead:{1}", receiveState.MessageSize, bytesRead);
                 var size = receiveState.MessageSize <= ReceiveState.BufferSize ? receiveState.MessageSize.Value : ReceiveState.BufferSize;
                 receiveState.ReceivedData.Clear();
                 receiveState.ClearBuffer();

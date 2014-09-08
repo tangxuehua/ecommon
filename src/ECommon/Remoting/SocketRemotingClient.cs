@@ -178,29 +178,24 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
+            if (_clientSocket.IsConnected) return;
+
             var success = false;
 
-            if (!_clientSocket.IsConnected)
+            try
             {
-                try
-                {
-                    _clientSocket.Shutdown();
-                    _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
-                    _clientSocket.Connect(_address, _port);
-                    _clientSocket.Start(ReceiveMessage);
-                    success = true;
-                }
-                catch { }
-            }
-            else
-            {
+                _clientSocket.Shutdown();
+                _clientSocket = new ClientSocket(new RemotingClientSocketEventListener(this));
+                _clientSocket.Connect(_address, _port);
+                _clientSocket.Start(ReceiveMessage);
                 success = true;
             }
+            catch { }
 
             if (success)
             {
-                StopReconnectServerTask();
                 OnServerReconnected(_clientSocket.SocketInfo);
+                StopReconnectServerTask();
             }
         }
         private void StartClientSocket()
@@ -263,6 +258,10 @@ namespace ECommon.Remoting
                 {
                     _scheduleService.ShutdownTask(_reconnectServerTaskId);
                     _reconnectServerTaskId = 0;
+                    if (_clientSocket.SocketInfo != null)
+                    {
+                        _logger.InfoFormat("Stopped reconnect server[address={0}] task.", _clientSocket.SocketInfo.SocketRemotingEndpointAddress);
+                    }
                 }
             }
         }

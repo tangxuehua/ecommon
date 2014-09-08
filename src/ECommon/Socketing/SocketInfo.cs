@@ -17,5 +17,22 @@ namespace ECommon.Socketing
             InnerSocket = socket;
             SocketRemotingEndpointAddress = socket.RemoteEndPoint.ToString();
         }
+
+        public void Close()
+        {
+            if (InnerSocket == null || !InnerSocket.Connected) return;
+
+            try
+            {
+                InnerSocket.Shutdown(SocketShutdown.Both);
+            }
+            catch { }
+            try
+            {
+                InnerSocket.Close();
+            }
+            catch
+            { }
+        }
     }
 }
