@@ -4,7 +4,7 @@ namespace ECommon.Remoting
 {
     public interface IRequestHandlerContext
     {
-        IChannel Channel { get; }
+        ISocketChannel Channel { get; }
         Action<RemotingResponse> SendRemotingResponse { get; }
     }
 }

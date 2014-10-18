@@ -1,34 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Socketing;
+using ECommon.TcpTransport;
 
 namespace ECommon.Remoting
 {
     public class SocketRemotingServer
     {
-        private readonly ServerSocket _serverSocket;
+        private readonly TcpServerListener _serverListener;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
         private readonly ILogger _logger;
 
-        public SocketRemotingServer(string name, SocketSetting socketSetting, ISocketEventListener socketEventListener = null)
+        public SocketRemotingServer(string name, IPEndPoint serverEndPoint, ISocketServerEventListener eventListener = null)
         {
-            _serverSocket = new ServerSocket(socketEventListener);
+            _serverListener = new TcpServerListener(serverEndPoint, eventListener, HandleRemotingRequest);
             _requestHandlerDict = new Dictionary<int, IRequestHandler>();
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().Name);
-            _serverSocket.Bind(socketSetting.Address, socketSetting.Port).Listen(socketSetting.Backlog);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().FullName);
         }
 
         public void Start()
         {
-            _serverSocket.Start(HandleRemotingRequest);
+            _serverListener.Start();
         }
-
         public void Shutdown()
         {
-            _serverSocket.Shutdown();
+            _serverListener.Stop();
         }
 
         public void RegisterRequestHandler(int requestCode, IRequestHandler requestHandler)
@@ -36,10 +36,10 @@ namespace ECommon.Remoting
             _requestHandlerDict[requestCode] = requestHandler;
         }
 
-        private void HandleRemotingRequest(ReceiveContext receiveContext)
+        private void HandleRemotingRequest(ITcpConnection connection, byte[] message, Action<byte[]> sendReplyAction)
         {
-            var remotingRequest = RemotingUtil.ParseRequest(receiveContext.ReceivedMessage);
-            var requestHandlerContext = new SocketRequestHandlerContext(receiveContext, remotingRequest, _logger);
+            var remotingRequest = RemotingUtil.ParseRequest(message);
+            var requestHandlerContext = new SocketRequestHandlerContext(connection, sendReplyAction);
 
             IRequestHandler requestHandler;
             if (!_requestHandlerDict.TryGetValue(remotingRequest.Code, out requestHandler))

@@ -1,30 +1,43 @@
-﻿using System.Net.Sockets;
-using ECommon.Socketing;
+﻿using System;
+using System.Net;
+using ECommon.TcpTransport;
+using ECommon.Utilities;
 
 namespace ECommon.Remoting
 {
-    public class SocketChannel : IChannel
+    public class SocketChannel : ISocketChannel
     {
-        public SocketInfo SocketInfo { get; private set; }
+        private ITcpConnection _connection;
 
-        public SocketChannel(SocketInfo socketInfo)
+        public SocketChannel(ITcpConnection connection)
         {
-            SocketInfo = socketInfo;
+            Ensure.NotNull(connection, "connection");
+            _connection = connection;
         }
 
-        public string RemotingAddress
+        public Guid Id
         {
-            get { return SocketInfo.SocketRemotingEndpointAddress; }
+            get { return _connection.ConnectionId; }
+        }
+
+        public IPEndPoint RemoteEndPoint
+        {
+            get { return _connection.RemoteEndPoint; }
+        }
+
+        public IPEndPoint LocalEndPoint
+        {
+            get { return _connection.LocalEndPoint; }
         }
 
         public void Close()
         {
-            SocketInfo.InnerSocket.Close();
+            _connection.Close(null);
         }
 
         public override string ToString()
         {
-            return RemotingAddress;
+            return string.Format("[Id:{0},RemoteEndPoint:{1},LocalEndPoint:{2}]", Id, RemoteEndPoint, LocalEndPoint);
         }
     }
 }

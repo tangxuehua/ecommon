@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace ECommon.Utilities
+namespace ECommon.Extensions
 {
     /// <summary>An extension class to provide utility lock mechanism.
     /// </summary>
