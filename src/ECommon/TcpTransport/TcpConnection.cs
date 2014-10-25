@@ -8,7 +8,6 @@ using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.TcpTransport.BufferManagement;
-using ECommon.TcpTransport.Locks;
 using ECommon.Utilities;
 
 namespace ECommon.TcpTransport
@@ -70,7 +69,7 @@ namespace ECommon.TcpTransport
         private readonly MemoryStream _memoryStream = new MemoryStream();
 
         private readonly object _receivingLock = new object();
-        private readonly SpinLock2 _sendingLock = new SpinLock2();
+        private readonly object _sendingLock = new object();
         private bool _isSending;
         private volatile int _closed;
 
@@ -87,7 +86,7 @@ namespace ECommon.TcpTransport
         private void InitSocket(Socket socket)
         {
             InitConnectionBase(socket);
-            using (_sendingLock.Acquire()) 
+            lock (_sendingLock)
             {
                 _socket = socket;
                 try
@@ -117,7 +116,7 @@ namespace ECommon.TcpTransport
 
         public void EnqueueSend(IEnumerable<ArraySegment<byte>> data)
         {
-            using (_sendingLock.Acquire())
+            lock (_sendingLock)
             {
                 int bytes = 0;
                 foreach (var segment in data)
@@ -132,7 +131,7 @@ namespace ECommon.TcpTransport
 
         private void TrySend()
         {
-            using (_sendingLock.Acquire())
+            lock (_sendingLock)
             {
                 if (_isSending || _sendQueue.Count == 0 || _socket == null) return;
                 if (TcpConnectionMonitor.Default.IsSendBlocked()) return;
@@ -186,7 +185,7 @@ namespace ECommon.TcpTransport
                     ReturnSendingSocketArgs();
                 else
                 {
-                    using (_sendingLock.Acquire())
+                    lock (_sendingLock)
                     {
                         _isSending = false;
                     }
@@ -347,7 +346,7 @@ namespace ECommon.TcpTransport
                 _socket = null;
             }
 
-            using (_sendingLock.Acquire())
+            lock (_sendingLock)
             {
                 if (!_isSending)
                     ReturnSendingSocketArgs();

@@ -94,7 +94,6 @@
     <Compile Include="TcpTransport\IMonitoredTcpConnection.cs" />
     <Compile Include="TcpTransport\ITcpConnectionInfo.cs" />
     <Compile Include="TcpTransport\ITcpConnection.cs" />
-    <Compile Include="TcpTransport\Locks\SpinLock2.cs" />
     <Compile Include="TcpTransport\SocketArgsPool.cs" />
     <Compile Include="TcpTransport\TcpClientConnector.cs" />
     <Compile Include="TcpTransport\TcpConfiguration.cs" />
