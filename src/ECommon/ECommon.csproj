@@ -65,6 +65,7 @@
     <Compile Include="Remoting\RemotingUtil.cs" />
     <Compile Include="Remoting\ResponseFuture.cs" />
     <Compile Include="Remoting\SocketChannel.cs" />
+    <Compile Include="Scheduling\LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="TcpTransport\TcpClient.cs" />
     <Compile Include="Remoting\SocketRemotingClient.cs" />
     <Compile Include="Remoting\SocketRemotingServer.cs" />
