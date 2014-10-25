@@ -47,7 +47,7 @@ namespace ECommon.TcpTransport.BufferManagement
             {
                 //default to 1024 1kb buffers if people don't want to manage it on their own;
                 if (_defaultBufferManager == null)
-                    _defaultBufferManager = new BufferManager(1024, 1024, 1); 
+                    _defaultBufferManager = new BufferManager(1024, 1024, 1);
                 return _defaultBufferManager;
             }
         }
@@ -58,7 +58,7 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <param name="manager">The new default buffer manager.</param>
         public static void SetDefaultBufferManager(BufferManager manager)
         {
-            if (manager == null) 
+            if (manager == null)
                 throw new ArgumentNullException("manager");
             _defaultBufferManager = manager;
         }
@@ -146,7 +146,7 @@ namespace ECommon.TcpTransport.BufferManagement
         /// </summary>
         private void CreateNewSegment(bool forceCreation)
         {
-            if (!_allowedToCreateMemory) 
+            if (!_allowedToCreateMemory)
                 throw new UnableToCreateMemoryException();
             lock (_creatingNewSegmentLock)
             {
@@ -236,8 +236,8 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <param name="buffer">The <see cref="ArraySegment{T}"></see> to return to the cache</param>
         public void CheckIn(ArraySegment<byte> buffer)
         {
-           CheckBuffer(buffer);
-           _buffers.Push(buffer);
+            CheckBuffer(buffer);
+            _buffers.Push(buffer);
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace ECommon.TcpTransport.BufferManagement
         {
             if (buffersToReturn == null)
                 throw new ArgumentNullException("buffersToReturn");
-            
+
             foreach (var buf in buffersToReturn)
             {
                 CheckBuffer(buf);
@@ -265,7 +265,7 @@ namespace ECommon.TcpTransport.BufferManagement
         {
             if (buffer.Array == null || buffer.Count == 0 || buffer.Array.Length < buffer.Offset + buffer.Count)
                 throw new Exception("Attempt to checking invalid buffer");
-            if (buffer.Count != _chunkSize) 
+            if (buffer.Count != _chunkSize)
                 throw new ArgumentException("Buffer was not of the same chunk size as the buffer manager", "buffer");
         }
     }

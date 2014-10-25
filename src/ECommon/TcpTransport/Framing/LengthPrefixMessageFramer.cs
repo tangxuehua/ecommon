@@ -17,7 +17,7 @@ namespace ECommon.TcpTransport.Framing
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(LengthPrefixMessageFramer).FullName);
 
         public const int HeaderLength = sizeof(Int32);
-        
+
         private byte[] _messageBuffer;
         private int _bufferIndex = 0;
         private Action<ArraySegment<byte>> _receivedHandler;
@@ -45,7 +45,7 @@ namespace ECommon.TcpTransport.Framing
 
         public void UnFrameData(IEnumerable<ArraySegment<byte>> data)
         {
-            if (data == null) 
+            if (data == null)
                 throw new ArgumentNullException("data");
 
             foreach (ArraySegment<byte> buffer in data)
@@ -72,7 +72,7 @@ namespace ECommon.TcpTransport.Framing
             {
                 if (_headerBytes < HeaderLength)
                 {
-                    _packageLength |= (data[i] << (_headerBytes*8)); // little-endian order
+                    _packageLength |= (data[i] << (_headerBytes * 8)); // little-endian order
                     ++_headerBytes;
                     if (_headerBytes == HeaderLength)
                     {
@@ -85,7 +85,7 @@ namespace ECommon.TcpTransport.Framing
 
                         _messageBuffer = new byte[_packageLength];
                     }
-                } 
+                }
                 else
                 {
                     int copyCnt = Math.Min(bytes.Count + bytes.Offset - i, _packageLength - _bufferIndex);
@@ -111,13 +111,13 @@ namespace ECommon.TcpTransport.Framing
             var length = data.Count;
 
             yield return new ArraySegment<byte>(
-                new[] { (byte) length, (byte) (length >> 8), (byte) (length >> 16), (byte) (length >> 24) });
+                new[] { (byte)length, (byte)(length >> 8), (byte)(length >> 16), (byte)(length >> 24) });
             yield return data;
         }
 
         public void RegisterMessageArrivedCallback(Action<ArraySegment<byte>> handler)
         {
-            if (handler == null) 
+            if (handler == null)
                 throw new ArgumentNullException("handler");
 
             _receivedHandler = handler;

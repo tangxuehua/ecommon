@@ -44,7 +44,7 @@ namespace ECommon.TcpTransport.Utils
 
         public static void Exit(ExitCode exitCode, string reason)
         {
-            Exit((int) exitCode, reason);
+            Exit((int)exitCode, reason);
         }
 
         public static void Exit(int exitCode, string reason)

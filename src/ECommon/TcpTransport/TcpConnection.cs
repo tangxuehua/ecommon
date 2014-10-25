@@ -18,15 +18,15 @@ namespace ECommon.TcpTransport
         internal static readonly BufferManager BufferManager = new BufferManager(TcpConfiguration.BufferChunksCount, TcpConfiguration.SocketBufferSize);
 
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(TcpConnection).FullName);
-        private static readonly SocketArgsPool SocketArgsPool = new SocketArgsPool("TcpConnection.SocketArgsPool", 
-                                                                                   TcpConfiguration.SendReceivePoolSize, 
+        private static readonly SocketArgsPool SocketArgsPool = new SocketArgsPool("TcpConnection.SocketArgsPool",
+                                                                                   TcpConfiguration.SendReceivePoolSize,
                                                                                    () => new SocketAsyncEventArgs());
 
-        public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId, 
-                                                                   IPEndPoint remoteEndPoint, 
-                                                                   TcpClientConnector connector, 
+        public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId,
+                                                                   IPEndPoint remoteEndPoint,
+                                                                   TcpClientConnector connector,
                                                                    TimeSpan connectionTimeout,
-                                                                   Action<ITcpConnection> onConnectionEstablished, 
+                                                                   Action<ITcpConnection> onConnectionEstablished,
                                                                    Action<ITcpConnection, SocketError> onConnectionFailed,
                                                                    bool verbose)
         {
@@ -75,7 +75,8 @@ namespace ECommon.TcpTransport
 
         private Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> _receiveCallback;
 
-        private TcpConnection(Guid connectionId, IPEndPoint remoteEndPoint, bool verbose): base(remoteEndPoint)
+        private TcpConnection(Guid connectionId, IPEndPoint remoteEndPoint, bool verbose)
+            : base(remoteEndPoint)
         {
             Ensure.NotEmptyGuid(connectionId, "connectionId");
 
@@ -148,7 +149,7 @@ namespace ECommon.TcpTransport
                     break;
             }
 
-            _sendSocketArgs.SetBuffer(_memoryStream.GetBuffer(), 0, (int) _memoryStream.Length);
+            _sendSocketArgs.SetBuffer(_memoryStream.GetBuffer(), 0, (int)_memoryStream.Length);
 
             try
             {
@@ -218,7 +219,7 @@ namespace ECommon.TcpTransport
             if (buffer.Array == null || buffer.Count == 0 || buffer.Array.Length < buffer.Offset + buffer.Count)
                 throw new Exception("Invalid buffer allocated");
             // TODO AN: do we need to lock on _receiveSocketArgs?..
-            lock (_receiveSocketArgs) 
+            lock (_receiveSocketArgs)
             {
                 _receiveSocketArgs.SetBuffer(buffer.Array, buffer.Offset, buffer.Count);
                 if (_receiveSocketArgs.Buffer == null) throw new Exception("Buffer was not set");
@@ -257,7 +258,7 @@ namespace ECommon.TcpTransport
                 CloseInternal(socketArgs.SocketError, socketArgs.SocketError != SocketError.Success ? "Socket receive error" : "Socket closed");
                 return;
             }
-            
+
             NotifyReceiveCompleted(socketArgs.BytesTransferred);
 
             lock (_receivingLock)
@@ -385,7 +386,7 @@ namespace ECommon.TcpTransport
                 SocketArgsPool.Return(socketArgs);
             }
         }
-        
+
         public override string ToString()
         {
             return RemoteEndPoint.ToString();

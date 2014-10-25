@@ -25,7 +25,7 @@ namespace ECommon.TcpTransport.BufferManagement
                 Offset = offset;
             }
         }
- 
+
         /// <summary>
         /// Gets the capacity of the <see cref="BufferPool"></see>
         /// </summary>
@@ -131,9 +131,9 @@ namespace ECommon.TcpTransport.BufferManagement
         /// Appends the specified data.
         /// </summary>
         /// <param name="data">The data to write.</param>
-        public void Append(byte [] data)
+        public void Append(byte[] data)
         {
-            if (data == null) 
+            if (data == null)
                 throw new ArgumentNullException("data");
             Write(_length, data, 0, data.Length);
         }
@@ -144,7 +144,7 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <param name="data">The data.</param>
         /// <param name="offset">The offset.</param>
         /// <param name="count">The count.</param>
-        public void Append(byte [] data, int offset, int count)
+        public void Append(byte[] data, int offset, int count)
         {
             Write(_length, data, offset, count);
         }
@@ -158,11 +158,11 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <param name="count">The count.</param>
         public void Write(int position, byte[] data, int offset, int count)
         {
-            if (data == null) 
+            if (data == null)
                 throw new ArgumentNullException("data");
-            if (offset < 0 || offset > data.Length) 
+            if (offset < 0 || offset > data.Length)
                 throw new ArgumentOutOfRangeException("offset");
-            if (count < 0 || count + offset > data.Length) 
+            if (count < 0 || count + offset > data.Length)
                 throw new ArgumentOutOfRangeException("count");
             Write(position, new ArraySegment<byte>(data, offset, count));
         }
@@ -204,11 +204,11 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <returns></returns>
         public int ReadFrom(int position, byte[] data, int offset, int count)
         {
-            if (data == null) 
+            if (data == null)
                 throw new ArgumentNullException("data");
-            if (offset < 0 || offset > data.Length) 
+            if (offset < 0 || offset > data.Length)
                 throw new ArgumentOutOfRangeException("offset");
-            if (count < 0 || count + offset > data.Length) 
+            if (count < 0 || count + offset > data.Length)
                 throw new ArgumentOutOfRangeException("count");
             return ReadFrom(position, new ArraySegment<byte>(data, offset, count));
         }
@@ -263,7 +263,7 @@ namespace ECommon.TcpTransport.BufferManagement
             if (newLength < 0) throw new ArgumentException("newLength must be greater than 0");
             int oldCapacity = Capacity;
             _length = newLength;
-            
+
             if (_length < oldCapacity && releaseMemory)
                 RemoveCapacity(GetPositionFor(_length));
             else if (_length > oldCapacity)
@@ -301,7 +301,7 @@ namespace ECommon.TcpTransport.BufferManagement
             CheckDisposed();
             Position l = GetPositionFor(_length);
             var result = new byte[_length];
-            for (int i=0; i<l.Index; i++)
+            for (int i = 0; i < l.Index; i++)
             {
                 ArraySegment<byte> current = _buffers[i];
                 //copy full buffers
@@ -311,7 +311,7 @@ namespace ECommon.TcpTransport.BufferManagement
             if (l.Index < _buffers.Count)
             {
                 ArraySegment<byte> last = _buffers[l.Index];
-                Buffer.BlockCopy(last.Array, last.Offset, result, l.Index*_chunkSize, l.Offset);
+                Buffer.BlockCopy(last.Array, last.Offset, result, l.Index * _chunkSize, l.Offset);
             }
             return result;
         }

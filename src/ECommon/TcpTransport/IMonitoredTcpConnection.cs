@@ -6,7 +6,7 @@ namespace ECommon.TcpTransport
     {
         bool IsReadyForSend { get; }
         bool IsReadyForReceive { get; }
-        bool IsInitialized { get; } 
+        bool IsInitialized { get; }
         bool IsFaulted { get; }
         bool IsClosed { get; }
 

@@ -124,7 +124,7 @@ namespace ECommon.TcpTransport
 
             _sentSinceLastRun += totalBytesSent - connectionData.LastTotalBytesSent;
             _receivedSinceLastRun += totalBytesReceived - connectionData.LastTotalBytesReceived;
-            
+
             _sentTotal += _sentSinceLastRun;
             _receivedTotal += _receivedSinceLastRun;
 

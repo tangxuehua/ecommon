@@ -18,15 +18,15 @@ namespace ECommon.TcpTransport
         internal static readonly BufferManager BufferManager = new BufferManager(TcpConfiguration.BufferChunksCount, TcpConfiguration.SocketBufferSize);
 
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(TcpConnectionLockless).FullName);
-        private static readonly SocketArgsPool SocketArgsPool = new SocketArgsPool("TcpConnection.SocketArgsPool", 
-                                                                                   TcpConfiguration.SendReceivePoolSize, 
+        private static readonly SocketArgsPool SocketArgsPool = new SocketArgsPool("TcpConnection.SocketArgsPool",
+                                                                                   TcpConfiguration.SendReceivePoolSize,
                                                                                    () => new SocketAsyncEventArgs());
 
-        public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId, 
-                                                                   IPEndPoint remoteEndPoint, 
-                                                                   TcpClientConnector connector, 
+        public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId,
+                                                                   IPEndPoint remoteEndPoint,
+                                                                   TcpClientConnector connector,
                                                                    TimeSpan connectionTimeout,
-                                                                   Action<ITcpConnection> onConnectionEstablished, 
+                                                                   Action<ITcpConnection> onConnectionEstablished,
                                                                    Action<ITcpConnection, SocketError> onConnectionFailed,
                                                                    bool verbose)
         {
@@ -82,7 +82,8 @@ namespace ECommon.TcpTransport
 
         private Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> _receiveCallback;
 
-        private TcpConnectionLockless(Guid connectionId, IPEndPoint remoteEndPoint, bool verbose): base(remoteEndPoint)
+        private TcpConnectionLockless(Guid connectionId, IPEndPoint remoteEndPoint, bool verbose)
+            : base(remoteEndPoint)
         {
             Ensure.NotEmptyGuid(connectionId, "connectionId");
 
@@ -261,9 +262,9 @@ namespace ECommon.TcpTransport
                 CloseInternal(socketArgs.SocketError, socketArgs.SocketError != SocketError.Success ? "Socket receive error" : "Socket closed");
                 return;
             }
-            
+
             NotifyReceiveCompleted(socketArgs.BytesTransferred);
-            
+
             var buf = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
             _receiveQueue.Enqueue(new ReceivedData(buf, socketArgs.BytesTransferred));
             socketArgs.SetBuffer(null, 0, 0);
@@ -378,12 +379,12 @@ namespace ECommon.TcpTransport
                 SocketArgsPool.Return(socketArgs);
             }
         }
-        
+
         public override string ToString()
         {
             return RemoteEndPoint.ToString();
         }
-    
+
         private struct ReceivedData
         {
             public readonly ArraySegment<byte> Buf;

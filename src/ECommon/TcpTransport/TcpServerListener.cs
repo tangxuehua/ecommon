@@ -101,10 +101,10 @@ namespace ECommon.TcpTransport
         {
             Helper.EatException(
                 () =>
-                    {
-                        if (socketArgs.AcceptSocket != null) // avoid annoying exceptions
-                            socketArgs.AcceptSocket.Close(TcpConfiguration.SocketCloseTimeoutMs);
-                    });
+                {
+                    if (socketArgs.AcceptSocket != null) // avoid annoying exceptions
+                        socketArgs.AcceptSocket.Close(TcpConfiguration.SocketCloseTimeoutMs);
+                });
             socketArgs.AcceptSocket = null;
             _acceptSocketArgsPool.Return(socketArgs);
         }

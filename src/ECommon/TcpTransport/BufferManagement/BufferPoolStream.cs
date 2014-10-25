@@ -33,7 +33,7 @@ namespace ECommon.TcpTransport.BufferManagement
         /// <param name="bufferPool">The buffer pool used as underlying storage.</param>
         public BufferPoolStream(BufferPool bufferPool)
         {
-            if (bufferPool == null) 
+            if (bufferPool == null)
                 throw new ArgumentNullException("bufferPool");
             _bufferPool = bufferPool;
         }
@@ -45,7 +45,7 @@ namespace ECommon.TcpTransport.BufferManagement
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            switch(origin)
+            switch (origin)
             {
                 case SeekOrigin.Begin:
                     Position = offset;
@@ -64,23 +64,23 @@ namespace ECommon.TcpTransport.BufferManagement
 
         public override void SetLength(long value)
         {
-            _bufferPool.SetLength((int) value);
+            _bufferPool.SetLength((int)value);
             if (_position > value)
                 _position = value;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (_position >= _bufferPool.Length) 
+            if (_position >= _bufferPool.Length)
                 return 0;
-            int ret = _bufferPool.ReadFrom((int) _position, buffer, offset, count);
+            int ret = _bufferPool.ReadFrom((int)_position, buffer, offset, count);
             _position += ret;
             return ret;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            _bufferPool.Write((int) _position, buffer, offset, count);
+            _bufferPool.Write((int)_position, buffer, offset, count);
             _position += count;
         }
 
