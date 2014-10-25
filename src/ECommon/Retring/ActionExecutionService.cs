@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using ECommon.Components;
+using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Scheduling;
 
@@ -10,7 +11,7 @@ namespace ECommon.Retring
     /// </summary>
     public class ActionExecutionService : IActionExecutionService
     {
-        private const int DefaultPeriod = 5000;
+        private readonly int _retryActionDefaultPeriod;
         private readonly BlockingCollection<ActionInfo> _retryQueue;
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
@@ -20,10 +21,11 @@ namespace ECommon.Retring
         /// <param name="loggerFactory"></param>
         public ActionExecutionService(ILoggerFactory loggerFactory)
         {
+            _retryActionDefaultPeriod = Configuration.Instance.Setting.RetryActionDefaultPeriod;
             _retryQueue = new BlockingCollection<ActionInfo>(new ConcurrentQueue<ActionInfo>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _logger = loggerFactory.Create(GetType().FullName);
-            _scheduleService.ScheduleTask("ActionExecutionService.RetryAction", RetryAction, DefaultPeriod, DefaultPeriod);
+            _scheduleService.ScheduleTask("ActionExecutionService.RetryAction", RetryAction, _retryActionDefaultPeriod, _retryActionDefaultPeriod);
         }
 
         /// <summary>Try to execute the given action with the given max retry count.

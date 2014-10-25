@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configurations\Configuration.cs" />
+    <Compile Include="Configurations\Setting.cs" />
     <Compile Include="Dapper\SqlMapper.cs" />
     <Compile Include="Dapper\SqlMapper_Extensions.cs" />
     <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
@@ -100,7 +101,6 @@
     <Compile Include="TcpTransport\TcpConfiguration.cs" />
     <Compile Include="TcpTransport\TcpConnection.cs" />
     <Compile Include="TcpTransport\TcpConnectionBase.cs" />
-    <Compile Include="TcpTransport\TcpConnectionLockless.cs" />
     <Compile Include="TcpTransport\TcpConnectionMonitor.cs" />
     <Compile Include="TcpTransport\TcpServerListener.cs" />
     <Compile Include="TcpTransport\TcpStats.cs" />

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using ECommon.Configurations;
 using ECommon.Utilities;
 
 namespace ECommon.TcpTransport
@@ -10,16 +11,15 @@ namespace ECommon.TcpTransport
     public class TcpClientConnector
     {
         private const int CheckPeriodMs = 200;
-
+        private TcpConfiguration _tcpConfiguration;
         private readonly SocketArgsPool _connectSocketArgsPool;
         private readonly ConcurrentDictionary<Guid, PendingConnection> _pendingConections;
         private readonly Timer _timer;
 
         public TcpClientConnector()
         {
-            _connectSocketArgsPool = new SocketArgsPool("TcpClientConnector._connectSocketArgsPool",
-                                                        TcpConfiguration.ConnectPoolSize,
-                                                        CreateConnectSocketArgs);
+            _tcpConfiguration = Configuration.Instance.Setting.TcpConfiguration;
+            _connectSocketArgsPool = new SocketArgsPool("TcpClientConnector._connectSocketArgsPool", _tcpConfiguration.ConnectPoolSize, CreateConnectSocketArgs);
             _pendingConections = new ConcurrentDictionary<Guid, PendingConnection>();
             _timer = new Timer(TimerCallback, null, CheckPeriodMs, Timeout.Infinite);
         }
@@ -101,7 +101,7 @@ namespace ECommon.TcpTransport
             var onConnectionFailed = callbacks.OnConnectionFailed;
             var pendingConnection = callbacks.PendingConnection;
 
-            Helper.EatException(() => socketArgs.AcceptSocket.Close(TcpConfiguration.SocketCloseTimeoutMs));
+            Helper.EatException(() => socketArgs.AcceptSocket.Close(_tcpConfiguration.SocketCloseTimeoutMs));
             socketArgs.AcceptSocket = null;
             callbacks.Reset();
             _connectSocketArgsPool.Return(socketArgs);

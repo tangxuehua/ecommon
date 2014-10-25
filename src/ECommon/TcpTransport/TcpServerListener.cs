@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using ECommon.Components;
+using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Socketing;
 using ECommon.TcpTransport.Framing;
@@ -28,7 +29,7 @@ namespace ECommon.TcpTransport
             _eventListener = eventListener;
             _messageHandler = messageHandler;
             _listeningSocket = new Socket(serverEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _acceptSocketArgsPool = new SocketArgsPool("TcpServerListener.AcceptSocketArgsPool", TcpConfiguration.ConcurrentAccepts * 2, CreateAcceptSocketArgs);
+            _acceptSocketArgsPool = new SocketArgsPool("TcpServerListener.AcceptSocketArgsPool", Configuration.Instance.Setting.TcpConfiguration.ConcurrentAccepts * 2, CreateAcceptSocketArgs);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -38,23 +39,23 @@ namespace ECommon.TcpTransport
             try
             {
                 _listeningSocket.Bind(_serverEndPoint);
-                _listeningSocket.Listen(TcpConfiguration.AcceptBacklogCount);
+                _listeningSocket.Listen(Configuration.Instance.Setting.TcpConfiguration.AcceptBacklogCount);
             }
             catch (Exception)
             {
                 _logger.InfoFormat("Failed to listen on TCP endpoint: {0}.", _serverEndPoint);
-                Helper.EatException(() => _listeningSocket.Close(TcpConfiguration.SocketCloseTimeoutMs));
+                Helper.EatException(() => _listeningSocket.Close(Configuration.Instance.Setting.TcpConfiguration.SocketCloseTimeoutMs));
                 throw;
             }
 
-            for (int i = 0; i < TcpConfiguration.ConcurrentAccepts; ++i)
+            for (int i = 0; i < Configuration.Instance.Setting.TcpConfiguration.ConcurrentAccepts; ++i)
             {
                 StartAccepting();
             }
         }
         public void Stop()
         {
-            Helper.EatException(() => _listeningSocket.Close(TcpConfiguration.SocketCloseTimeoutMs));
+            Helper.EatException(() => _listeningSocket.Close(Configuration.Instance.Setting.TcpConfiguration.SocketCloseTimeoutMs));
         }
 
         private SocketAsyncEventArgs CreateAcceptSocketArgs()
@@ -103,7 +104,7 @@ namespace ECommon.TcpTransport
                 () =>
                 {
                     if (socketArgs.AcceptSocket != null) // avoid annoying exceptions
-                        socketArgs.AcceptSocket.Close(TcpConfiguration.SocketCloseTimeoutMs);
+                        socketArgs.AcceptSocket.Close(Configuration.Instance.Setting.TcpConfiguration.SocketCloseTimeoutMs);
                 });
             socketArgs.AcceptSocket = null;
             _acceptSocketArgsPool.Return(socketArgs);

@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using ECommon.Components;
+using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.TcpTransport.BufferManagement;
 using ECommon.Utilities;
@@ -14,9 +15,9 @@ namespace ECommon.TcpTransport
 {
     public class TcpConnection : TcpConnectionBase, ITcpConnection
     {
-        internal const int MaxSendPacketSize = 64 * 1024;
-        internal static readonly BufferManager BufferManager = new BufferManager(TcpConfiguration.BufferChunksCount, TcpConfiguration.SocketBufferSize);
-
+        private static readonly TcpConfiguration TcpConfiguration = Configuration.Instance.Setting.TcpConfiguration;
+        private static readonly int MaxSendPacketSize = TcpConfiguration.MaxSendPacketSize;
+        private static readonly BufferManager BufferManager = new BufferManager(TcpConfiguration.BufferChunksCount, TcpConfiguration.SocketBufferSize);
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(TcpConnection).FullName);
         private static readonly SocketArgsPool SocketArgsPool = new SocketArgsPool("TcpConnection.SocketArgsPool",
                                                                                    TcpConfiguration.SendReceivePoolSize,

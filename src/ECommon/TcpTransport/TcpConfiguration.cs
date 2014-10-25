@@ -1,17 +1,28 @@
 ﻿namespace ECommon.TcpTransport
 {
-    public static class TcpConfiguration
+    public class TcpConfiguration
     {
-        public const int SocketCloseTimeoutMs = 500;
+        public int MaxSendPacketSize;
+        public int SocketCloseTimeoutMs;
+        public int AcceptBacklogCount;
+        public int ConcurrentAccepts;
+        public int AcceptPoolSize;
+        public int ConnectPoolSize;
+        public int SendReceivePoolSize;
+        public int BufferChunksCount;
+        public int SocketBufferSize;
 
-        public const int AcceptBacklogCount = 1000;
-        public const int ConcurrentAccepts = 1;
-        public const int AcceptPoolSize = ConcurrentAccepts * 2;
-
-        public const int ConnectPoolSize = 32;
-        public const int SendReceivePoolSize = 512;
-
-        public const int BufferChunksCount = 512;
-        public const int SocketBufferSize = 8 * 1024;
+        public TcpConfiguration()
+        {
+            MaxSendPacketSize = 64 * 1024;
+            SocketCloseTimeoutMs = 500;
+            AcceptBacklogCount = 1000;
+            ConcurrentAccepts = 1;
+            AcceptPoolSize = ConcurrentAccepts * 2;
+            ConnectPoolSize = 32;
+            SendReceivePoolSize = 512;
+            BufferChunksCount = 512;
+            SocketBufferSize = 8 * 1024;
+        }
     }
 }
