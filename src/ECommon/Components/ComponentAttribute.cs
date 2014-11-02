@@ -12,7 +12,7 @@ namespace ECommon.Components
         public LifeStyle LifeStyle { get; private set; }
         /// <summary>Default constructor.
         /// </summary>
-        public ComponentAttribute() : this(LifeStyle.Transient) { }
+        public ComponentAttribute() : this(LifeStyle.Singleton) { }
         /// <summary>Parameterized constructor.
         /// </summary>
         /// <param name="lifeStyle"></param>
