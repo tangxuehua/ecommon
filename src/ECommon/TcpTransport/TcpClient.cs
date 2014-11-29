@@ -15,6 +15,7 @@ namespace ECommon.TcpTransport
     {
         private ITcpConnection _connection;
         private IMessageFramer _framer;
+        private readonly IPEndPoint _localEndPoint;
         private readonly IPEndPoint _serverEndPoint;
         private readonly ISocketClientEventListener _eventListener;
         private readonly Action<byte[]> _replyHandler;
@@ -26,9 +27,14 @@ namespace ECommon.TcpTransport
         public TcpConnectionStatus ConnectionStatus { get; private set; }
 
         public TcpClient(IPEndPoint serverEndPoint, Action<byte[]> replyHandler, ISocketClientEventListener eventListener = null)
+            : this(null, serverEndPoint, replyHandler, eventListener)
+        {
+        }
+        public TcpClient(IPEndPoint localEndPoint, IPEndPoint serverEndPoint, Action<byte[]> replyHandler, ISocketClientEventListener eventListener = null)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
             Ensure.NotNull(replyHandler, "replyHandler");
+            _localEndPoint = localEndPoint;
             _serverEndPoint = serverEndPoint;
             _replyHandler = replyHandler;
             _eventListener = eventListener;
@@ -40,7 +46,7 @@ namespace ECommon.TcpTransport
 
         public void Start()
         {
-            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
+            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _localEndPoint, _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
             _startWaitHandle.WaitOne();
@@ -55,7 +61,7 @@ namespace ECommon.TcpTransport
         public void ReconnectToServer()
         {
             _connection.ConnectionClosed -= OnConnectionClosed;
-            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
+            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _localEndPoint, _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
         }

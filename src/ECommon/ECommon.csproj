@@ -60,6 +60,7 @@
     <Compile Include="Remoting\IRequestHandlerContext.cs" />
     <Compile Include="Remoting\ISocketClientEventListener.cs" />
     <Compile Include="Remoting\ISocketServerEventListener.cs" />
+    <Compile Include="Remoting\RemotingClientSetting.cs" />
     <Compile Include="Remoting\RemotingMessage.cs" />
     <Compile Include="Remoting\RemotingRequest.cs" />
     <Compile Include="Remoting\RemotingResponse.cs" />

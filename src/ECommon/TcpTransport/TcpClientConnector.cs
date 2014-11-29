@@ -33,16 +33,18 @@ namespace ECommon.TcpTransport
         }
 
         public ITcpConnection ConnectTo(Guid connectionId,
+                                        IPEndPoint localEndPoint,
                                         IPEndPoint remoteEndPoint,
                                         Action<ITcpConnection> onConnectionEstablished = null,
                                         Action<ITcpConnection, SocketError> onConnectionFailed = null,
                                         bool verbose = true)
         {
             Ensure.NotNull(remoteEndPoint, "remoteEndPoint");
-            return TcpConnection.CreateConnectingTcpConnection(connectionId, remoteEndPoint, this, onConnectionEstablished, onConnectionFailed, verbose);
+            return TcpConnection.CreateConnectingTcpConnection(connectionId, localEndPoint, remoteEndPoint, this, onConnectionEstablished, onConnectionFailed, verbose);
         }
 
-        internal void InitConnect(IPEndPoint serverEndPoint,
+        internal void InitConnect(IPEndPoint localEndPoint,
+                                  IPEndPoint serverEndPoint,
                                   Action<IPEndPoint, Socket> onConnectionEstablished,
                                   Action<IPEndPoint, SocketError> onConnectionFailed,
                                   ITcpConnection connection)
@@ -67,7 +69,10 @@ namespace ECommon.TcpTransport
 
             try
             {
-                //connectingSocket.Bind(new IPEndPoint(SocketUtils.GetLocalIPV4(), 3456));
+                if (localEndPoint != null)
+                {
+                    connectingSocket.Bind(localEndPoint);
+                }
                 var firedAsync = connectingSocket.ConnectAsync(socketArgs);
                 if (!firedAsync)
                     ProcessConnect(socketArgs);

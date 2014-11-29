@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using ECommon.Components;
+using ECommon.Configurations;
 using ECommon.Extensions;
 using ECommon.Logging;
 using ECommon.Remoting.Exceptions;
@@ -18,7 +19,7 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingClient : ISocketClientEventListener
     {
-        private readonly int _reconnectInterval = 1000;
+        private readonly RemotingClientSetting _setting;
         private readonly TcpSocketClient _tcpClient;
         private readonly object _sync;
         private readonly IPEndPoint _serverEndPoint;
@@ -31,12 +32,13 @@ namespace ECommon.Remoting
         private int _scanTimeoutRequestTaskId;
         private int _isReconnecting;
 
-        public SocketRemotingClient(string name, IPEndPoint serverEndPoint, ISocketClientEventListener eventListener = null)
+        public SocketRemotingClient(string name, IPEndPoint serverEndPoint, RemotingClientSetting setting = null, ISocketClientEventListener eventListener = null)
         {
             _sync = new object();
             _serverEndPoint = serverEndPoint;
             _eventListener = eventListener;
-            _tcpClient = new TcpSocketClient(serverEndPoint, ReceiveReplyMessage, this);
+            _setting = setting ?? new RemotingClientSetting();
+            _tcpClient = new TcpSocketClient(_setting.LocalEndPoint, serverEndPoint, ReceiveReplyMessage, this);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
@@ -164,7 +166,7 @@ namespace ECommon.Remoting
                 return;
             }
 
-            Thread.Sleep(_reconnectInterval);
+            Thread.Sleep(_setting.ReconnectInterval);
 
             _logger.InfoFormat("Try to reconnect to server:{0}.", _serverEndPoint);
 

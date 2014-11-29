@@ -24,6 +24,7 @@ namespace ECommon.TcpTransport
                                                                                    () => new SocketAsyncEventArgs());
 
         public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId,
+                                                                   IPEndPoint localEndPoint,
                                                                    IPEndPoint remoteEndPoint,
                                                                    TcpClientConnector connector,
                                                                    Action<ITcpConnection> onConnectionEstablished,
@@ -31,7 +32,7 @@ namespace ECommon.TcpTransport
                                                                    bool verbose)
         {
             var connection = new TcpConnection(connectionId, remoteEndPoint, verbose);
-            connector.InitConnect(remoteEndPoint,
+            connector.InitConnect(localEndPoint, remoteEndPoint,
                                   (_, socket) =>
                                   {
                                       connection.InitSocket(socket);
