@@ -34,21 +34,18 @@ namespace ECommon.TcpTransport
 
         public ITcpConnection ConnectTo(Guid connectionId,
                                         IPEndPoint remoteEndPoint,
-                                        TimeSpan connectionTimeout,
                                         Action<ITcpConnection> onConnectionEstablished = null,
                                         Action<ITcpConnection, SocketError> onConnectionFailed = null,
                                         bool verbose = true)
         {
             Ensure.NotNull(remoteEndPoint, "remoteEndPoint");
-            return TcpConnection.CreateConnectingTcpConnection(connectionId, remoteEndPoint, this, connectionTimeout,
-                                                               onConnectionEstablished, onConnectionFailed, verbose);
+            return TcpConnection.CreateConnectingTcpConnection(connectionId, remoteEndPoint, this, onConnectionEstablished, onConnectionFailed, verbose);
         }
 
         internal void InitConnect(IPEndPoint serverEndPoint,
                                   Action<IPEndPoint, Socket> onConnectionEstablished,
                                   Action<IPEndPoint, SocketError> onConnectionFailed,
-                                  ITcpConnection connection,
-                                  TimeSpan connectionTimeout)
+                                  ITcpConnection connection)
         {
             if (serverEndPoint == null)
                 throw new ArgumentNullException("serverEndPoint");
@@ -64,12 +61,13 @@ namespace ECommon.TcpTransport
             var callbacks = (CallbacksStateToken)socketArgs.UserToken;
             callbacks.OnConnectionEstablished = onConnectionEstablished;
             callbacks.OnConnectionFailed = onConnectionFailed;
-            callbacks.PendingConnection = new PendingConnection(connection, DateTime.UtcNow.Add(connectionTimeout));
+            callbacks.PendingConnection = new PendingConnection(connection, DateTime.UtcNow.Add(_tcpConfiguration.ConnectionTimeout));
 
             AddToConnecting(callbacks.PendingConnection);
 
             try
             {
+                //connectingSocket.Bind(new IPEndPoint(SocketUtils.GetLocalIPV4(), 3456));
                 var firedAsync = connectingSocket.ConnectAsync(socketArgs);
                 if (!firedAsync)
                     ProcessConnect(socketArgs);
@@ -131,7 +129,9 @@ namespace ECommon.TcpTransport
             foreach (var pendingConnection in _pendingConections.Values)
             {
                 if (DateTime.UtcNow >= pendingConnection.WhenToKill && RemoveFromConnecting(pendingConnection))
-                    Helper.EatException(() => pendingConnection.Connection.Close("Connection establishment timeout."));
+                {
+                    Helper.EatException(() => pendingConnection.Connection.Close(SocketError.TimedOut, "Connection establishment timeout."));
+                }
             }
             _timer.Change(CheckPeriodMs, Timeout.Infinite);
         }

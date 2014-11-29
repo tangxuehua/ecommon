@@ -26,7 +26,6 @@ namespace ECommon.TcpTransport
         public static ITcpConnection CreateConnectingTcpConnection(Guid connectionId,
                                                                    IPEndPoint remoteEndPoint,
                                                                    TcpClientConnector connector,
-                                                                   TimeSpan connectionTimeout,
                                                                    Action<ITcpConnection> onConnectionEstablished,
                                                                    Action<ITcpConnection, SocketError> onConnectionFailed,
                                                                    bool verbose)
@@ -43,7 +42,7 @@ namespace ECommon.TcpTransport
                                   {
                                       if (onConnectionFailed != null)
                                           onConnectionFailed(connection, socketError);
-                                  }, connection, connectionTimeout);
+                                  }, connection);
             return connection;
         }
 
@@ -316,9 +315,13 @@ namespace ECommon.TcpTransport
             NotifyReceiveDispatched(bytes);
         }
 
-        public void Close(string reason)
+        public void Close()
         {
-            CloseInternal(SocketError.Success, reason ?? "Normal socket close."); // normal socket closing
+            Close(SocketError.Success, null);
+        }
+        public void Close(SocketError socketError, string reason)
+        {
+            CloseInternal(socketError, reason ?? "Normal socket close.");
         }
 
         private void CloseInternal(SocketError socketError, string reason)

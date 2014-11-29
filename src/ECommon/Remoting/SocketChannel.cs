@@ -32,7 +32,7 @@ namespace ECommon.Remoting
 
         public void Close()
         {
-            _connection.Close(null);
+            _connection.Close();
         }
 
         public override string ToString()

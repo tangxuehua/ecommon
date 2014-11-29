@@ -18,6 +18,7 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingClient : ISocketClientEventListener
     {
+        private readonly int _reconnectInterval = 1000;
         private readonly TcpSocketClient _tcpClient;
         private readonly object _sync;
         private readonly IPEndPoint _serverEndPoint;
@@ -28,6 +29,7 @@ namespace ECommon.Remoting
         private readonly ISocketClientEventListener _eventListener;
         private readonly Worker _worker;
         private int _scanTimeoutRequestTaskId;
+        private int _isReconnecting;
 
         public SocketRemotingClient(string name, IPEndPoint serverEndPoint, ISocketClientEventListener eventListener = null)
         {
@@ -142,12 +144,48 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
+            if (!_tcpClient.IsStarted)
+            {
+                _logger.Error("Not allowed to reconnect server as the tcp client is not started yet.");
+                return;
+            }
+            if (_tcpClient.IsStopped)
+            {
+                _logger.Error("Not allowed to reconnect server as the tcp client is stopped.");
+                return;
+            }
             if (_tcpClient.ConnectionStatus == TcpConnectionStatus.ConnectionEstablished)
             {
                 return;
             }
+            if (Interlocked.CompareExchange(ref _isReconnecting, 1, 0) != 0)
+            {
+                _logger.Info("Reconnect server is in progress, ignore the current reconnecting.");
+                return;
+            }
+
+            Thread.Sleep(_reconnectInterval);
+
             _logger.InfoFormat("Try to reconnect to server:{0}.", _serverEndPoint);
-            _tcpClient.ReconnectToServer();
+
+            var hasException = false;
+            try
+            {
+                _tcpClient.ReconnectToServer();
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorFormat("Reconnect to server has exception.", ex);
+                hasException = true;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _isReconnecting, 0);
+            }
+            if (hasException)
+            {
+                ReconnectServer();
+            }
         }
         private void StartTcpClient()
         {
@@ -215,11 +253,7 @@ namespace ECommon.Remoting
             {
                 _eventListener.OnConnectionFailed(connectionInfo, socketError);
             }
-            Thread.Sleep(1000);
-            if (_tcpClient.IsStarted && !_tcpClient.IsStopped)
-            {
-                ReconnectServer();
-            }
+            ReconnectServer();
         }
         void ISocketClientEventListener.OnConnectionClosed(ITcpConnectionInfo connectionInfo, SocketError socketError)
         {
@@ -227,10 +261,7 @@ namespace ECommon.Remoting
             {
                 _eventListener.OnConnectionClosed(connectionInfo, socketError);
             }
-            if (_tcpClient.IsStarted && !_tcpClient.IsStopped)
-            {
-                ReconnectServer();
-            }
+            ReconnectServer();
         }
     }
 }

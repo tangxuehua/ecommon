@@ -13,7 +13,6 @@ namespace ECommon.TcpTransport
 {
     public class TcpClient
     {
-        private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromMilliseconds(1000);
         private ITcpConnection _connection;
         private IMessageFramer _framer;
         private readonly IPEndPoint _serverEndPoint;
@@ -41,7 +40,7 @@ namespace ECommon.TcpTransport
 
         public void Start()
         {
-            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, ConnectionTimeout, OnConnectionEstablished, OnConnectionFailed);
+            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
             _startWaitHandle.WaitOne();
@@ -49,14 +48,14 @@ namespace ECommon.TcpTransport
         }
         public void Stop()
         {
-            _connection.Close(null);
-            _connection.ConnectionClosed -= OnConnectionClosed;
             IsStopped = true;
+            _connection.Close();
+            _connection.ConnectionClosed -= OnConnectionClosed;
         }
         public void ReconnectToServer()
         {
             _connection.ConnectionClosed -= OnConnectionClosed;
-            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, ConnectionTimeout, OnConnectionEstablished, OnConnectionFailed);
+            _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
         }

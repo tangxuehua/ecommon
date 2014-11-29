@@ -13,6 +13,7 @@ namespace ECommon.TcpTransport
 
         void ReceiveAsync(Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> callback);
         void EnqueueSend(IEnumerable<ArraySegment<byte>> data);
-        void Close(string reason);
+        void Close();
+        void Close(SocketError socketError, string reason);
     }
 }

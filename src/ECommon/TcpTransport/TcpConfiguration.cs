@@ -1,4 +1,6 @@
-﻿namespace ECommon.TcpTransport
+﻿using System;
+
+namespace ECommon.TcpTransport
 {
     public class TcpConfiguration
     {
@@ -11,6 +13,7 @@
         public int SendReceivePoolSize;
         public int BufferChunksCount;
         public int SocketBufferSize;
+        public TimeSpan ConnectionTimeout;
 
         public TcpConfiguration()
         {
@@ -23,6 +26,7 @@
             SendReceivePoolSize = 512;
             BufferChunksCount = 512;
             SocketBufferSize = 8 * 1024;
+            ConnectionTimeout = TimeSpan.FromMilliseconds(5000);
         }
     }
 }
