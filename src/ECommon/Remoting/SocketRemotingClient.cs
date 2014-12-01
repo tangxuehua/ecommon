@@ -146,11 +146,6 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
-            if (!_tcpClient.IsStarted)
-            {
-                _logger.Error("Not allowed to reconnect server as the tcp client is not started yet.");
-                return;
-            }
             if (_tcpClient.IsStopped)
             {
                 _logger.Error("Not allowed to reconnect server as the tcp client is stopped.");
