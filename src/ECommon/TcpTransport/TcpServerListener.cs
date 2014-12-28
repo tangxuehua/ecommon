@@ -122,7 +122,7 @@ namespace ECommon.TcpTransport
                 return;
             }
 
-            var connection = TcpConnection.CreateAcceptedTcpConnection(Guid.NewGuid(), socketEndPoint, socket, true);
+            var connection = TcpConnection.CreateAcceptedTcpConnection(Guid.NewGuid(), socketEndPoint, socket);
             new AcceptedConnection(connection, _eventListener, _messageHandler).StartReceiving();
             _logger.InfoFormat("TCP connection accepted: [remoteEndPoint:{0}, localEndPoint:{1}, connectionId:{2:B}].", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
             if (_eventListener != null)

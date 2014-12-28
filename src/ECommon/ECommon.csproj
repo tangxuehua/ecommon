@@ -26,11 +26,11 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\..\..\..\nugetpublish\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\ECommon.XML</DocumentationFile>
+    <DocumentationFile>D:\nugetpublish\ECommon.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
@@ -50,7 +50,6 @@
     <Compile Include="Extensions\TaskSchedulerExtensions.cs" />
     <Compile Include="Logging\EmptyLogger.cs" />
     <Compile Include="Logging\EmptyLoggerFactory.cs" />
-    <Compile Include="Remoting\Exceptions\RemotingClientNotStartedException.cs" />
     <Compile Include="Remoting\Exceptions\ResponseFutureAddFailedException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingServerNotConnectedException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingRequestException.cs" />
@@ -94,7 +93,6 @@
     <Compile Include="TcpTransport\Framing\LengthPrefixMessageFramerWithBufferPool.cs" />
     <Compile Include="TcpTransport\Framing\PackageFramingException.cs" />
     <Compile Include="TcpTransport\Framing\StxEtxMessageFramer.cs" />
-    <Compile Include="TcpTransport\IMonitoredTcpConnection.cs" />
     <Compile Include="TcpTransport\ITcpConnectionInfo.cs" />
     <Compile Include="TcpTransport\ITcpConnection.cs" />
     <Compile Include="TcpTransport\SocketArgsPool.cs" />
@@ -102,13 +100,11 @@
     <Compile Include="TcpTransport\TcpConfiguration.cs" />
     <Compile Include="TcpTransport\TcpConnection.cs" />
     <Compile Include="TcpTransport\TcpConnectionBase.cs" />
-    <Compile Include="TcpTransport\TcpConnectionMonitor.cs" />
     <Compile Include="TcpTransport\TcpServerListener.cs" />
     <Compile Include="TcpTransport\TcpStats.cs" />
-    <Compile Include="TcpTransport\Utils\Application.cs" />
+    <Compile Include="TcpTransport\Utils\DumpHelper.cs" />
     <Compile Include="TcpTransport\Utils\Empty.cs" />
     <Compile Include="Utilities\Ensure.cs" />
-    <Compile Include="TcpTransport\Utils\DumpHelper.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
     <Compile Include="Utilities\LockUtility.cs" />

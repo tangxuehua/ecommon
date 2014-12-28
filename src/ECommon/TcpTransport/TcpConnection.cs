@@ -28,10 +28,9 @@ namespace ECommon.TcpTransport
                                                                    IPEndPoint remoteEndPoint,
                                                                    TcpClientConnector connector,
                                                                    Action<ITcpConnection> onConnectionEstablished,
-                                                                   Action<ITcpConnection, SocketError> onConnectionFailed,
-                                                                   bool verbose)
+                                                                   Action<ITcpConnection, SocketError> onConnectionFailed)
         {
-            var connection = new TcpConnection(connectionId, remoteEndPoint, verbose);
+            var connection = new TcpConnection(connectionId, remoteEndPoint);
             connector.InitConnect(localEndPoint, remoteEndPoint,
                                   (_, socket) =>
                                   {
@@ -47,9 +46,9 @@ namespace ECommon.TcpTransport
             return connection;
         }
 
-        public static ITcpConnection CreateAcceptedTcpConnection(Guid connectionId, IPEndPoint remoteEndPoint, Socket socket, bool verbose)
+        public static ITcpConnection CreateAcceptedTcpConnection(Guid connectionId, IPEndPoint remoteEndPoint, Socket socket)
         {
-            var connection = new TcpConnection(connectionId, remoteEndPoint, verbose);
+            var connection = new TcpConnection(connectionId, remoteEndPoint);
             connection.InitSocket(socket);
             return connection;
         }
@@ -59,7 +58,6 @@ namespace ECommon.TcpTransport
         public int SendQueueSize { get { return _sendQueue.Count; } }
 
         private readonly Guid _connectionId;
-        private readonly bool _verbose;
 
         private Socket _socket;
         private SocketAsyncEventArgs _receiveSocketArgs;
@@ -72,17 +70,14 @@ namespace ECommon.TcpTransport
         private readonly object _receivingLock = new object();
         private readonly object _sendingLock = new object();
         private bool _isSending;
-        private volatile int _closed;
+        private int _closed;
 
         private Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> _receiveCallback;
 
-        private TcpConnection(Guid connectionId, IPEndPoint remoteEndPoint, bool verbose)
-            : base(remoteEndPoint)
+        private TcpConnection(Guid connectionId, IPEndPoint remoteEndPoint) : base(remoteEndPoint)
         {
             Ensure.NotEmptyGuid(connectionId, "connectionId");
-
             _connectionId = connectionId;
-            _verbose = verbose;
         }
 
         private void InitSocket(Socket socket)
@@ -126,7 +121,6 @@ namespace ECommon.TcpTransport
                     _sendQueue.Enqueue(segment);
                     bytes += segment.Count;
                 }
-                NotifySendScheduled(bytes);
             }
             TrySend();
         }
@@ -136,7 +130,6 @@ namespace ECommon.TcpTransport
             lock (_sendingLock)
             {
                 if (_isSending || _sendQueue.Count == 0 || _socket == null) return;
-                if (TcpConnectionMonitor.Default.IsSendBlocked()) return;
                 _isSending = true;
             }
 
@@ -154,7 +147,6 @@ namespace ECommon.TcpTransport
 
             try
             {
-                NotifySendStarting(_sendSocketArgs.Count);
                 var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
                 if (!firedAsync)
                     ProcessSend(_sendSocketArgs);
@@ -175,14 +167,11 @@ namespace ECommon.TcpTransport
         {
             if (socketArgs.SocketError != SocketError.Success)
             {
-                NotifySendCompleted(0);
                 ReturnSendingSocketArgs();
                 CloseInternal(socketArgs.SocketError, "Socket send error.");
             }
             else
             {
-                NotifySendCompleted(socketArgs.Count);
-
                 if (_closed != 0)
                     ReturnSendingSocketArgs();
                 else
@@ -227,7 +216,6 @@ namespace ECommon.TcpTransport
             }
             try
             {
-                NotifyReceiveStarting();
                 bool firedAsync;
                 lock (_receiveSocketArgs)
                 {
@@ -254,13 +242,10 @@ namespace ECommon.TcpTransport
             // socket closed normally or some error occurred
             if (socketArgs.BytesTransferred == 0 || socketArgs.SocketError != SocketError.Success)
             {
-                NotifyReceiveCompleted(0);
                 ReturnReceivingSocketArgs();
                 CloseInternal(socketArgs.SocketError, socketArgs.SocketError != SocketError.Success ? "Socket receive error" : "Socket closed");
                 return;
             }
-
-            NotifyReceiveCompleted(socketArgs.BytesTransferred);
 
             lock (_receivingLock)
             {
@@ -313,7 +298,6 @@ namespace ECommon.TcpTransport
             {
                 BufferManager.CheckIn(res[i].Buf); // dispose buffers
             }
-            NotifyReceiveDispatched(bytes);
         }
 
         public void Close()
@@ -327,23 +311,12 @@ namespace ECommon.TcpTransport
 
         private void CloseInternal(SocketError socketError, string reason)
         {
-#pragma warning disable 420
             if (Interlocked.CompareExchange(ref _closed, 1, 0) != 0)
+            {
                 return;
-#pragma warning restore 420
+            }
 
             NotifyClosed();
-
-            if (_verbose)
-            {
-                _logger.DebugFormat("ES {12} closed [{0:HH:mm:ss.fff}, R{1}, L{2}, {3:B}]:\nReceived bytes: {4}, Sent bytes: {5}\n"
-                         + "Send calls: {6}, callbacks: {7}\nReceive calls: {8}, callbacks: {9}\nClose reason: [{10}] {11}\n",
-                         DateTime.UtcNow, RemoteEndPoint, LocalEndPoint, _connectionId,
-                         TotalBytesReceived, TotalBytesSent,
-                         SendCalls, SendCallbacks,
-                         ReceiveCalls, ReceiveCallbacks,
-                         socketError, reason, GetType().Name);
-            }
 
             if (_socket != null)
             {

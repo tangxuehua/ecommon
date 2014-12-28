@@ -36,11 +36,10 @@ namespace ECommon.TcpTransport
                                         IPEndPoint localEndPoint,
                                         IPEndPoint remoteEndPoint,
                                         Action<ITcpConnection> onConnectionEstablished = null,
-                                        Action<ITcpConnection, SocketError> onConnectionFailed = null,
-                                        bool verbose = true)
+                                        Action<ITcpConnection, SocketError> onConnectionFailed = null)
         {
             Ensure.NotNull(remoteEndPoint, "remoteEndPoint");
-            return TcpConnection.CreateConnectingTcpConnection(connectionId, localEndPoint, remoteEndPoint, this, onConnectionEstablished, onConnectionFailed, verbose);
+            return TcpConnection.CreateConnectingTcpConnection(connectionId, localEndPoint, remoteEndPoint, this, onConnectionEstablished, onConnectionFailed);
         }
 
         internal void InitConnect(IPEndPoint localEndPoint,

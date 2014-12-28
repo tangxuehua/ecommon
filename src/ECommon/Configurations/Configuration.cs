@@ -55,5 +55,11 @@ namespace ECommon.Configurations
             SetDefault<IActionExecutionService, ActionExecutionService>(LifeStyle.Transient);
             return this;
         }
+        public Configuration RegisterUnhandledExceptionHandler()
+        {
+            var logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) => logger.ErrorFormat("Unhandled exception: {0}", e.ExceptionObject);
+            return this;
+        }
     }
 }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Socketing;
@@ -20,9 +19,7 @@ namespace ECommon.TcpTransport
         private readonly ISocketClientEventListener _eventListener;
         private readonly Action<byte[]> _replyHandler;
         private readonly ILogger _logger;
-        private readonly ManualResetEvent _startWaitHandle;
 
-        public bool IsStarted { get; private set; }
         public bool IsStopped { get; private set; }
         public TcpConnectionStatus ConnectionStatus { get; private set; }
 
@@ -41,7 +38,6 @@ namespace ECommon.TcpTransport
             _framer = new LengthPrefixMessageFramer();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
-            _startWaitHandle = new ManualResetEvent(false);
         }
 
         public void Start()
@@ -49,8 +45,6 @@ namespace ECommon.TcpTransport
             _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _localEndPoint, _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
-            _startWaitHandle.WaitOne();
-            IsStarted = true;
         }
         public void Stop()
         {
@@ -74,7 +68,6 @@ namespace ECommon.TcpTransport
         {
             ConnectionStatus = TcpConnectionStatus.ConnectionEstablished;
             _logger.InfoFormat("TCP connection established: [remoteEndPoint:{0}, localEndPoint:{1}, connectionId:{2:B}].", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
-            _startWaitHandle.Set();
             if (_eventListener != null)
             {
                 _eventListener.OnConnectionEstablished(connection);

@@ -227,10 +227,6 @@ namespace ECommon.Remoting
         }
         private void EnsureClientStatus()
         {
-            if (!_tcpClient.IsStarted)
-            {
-                throw new RemotingClientNotStartedException();
-            }
             if (_tcpClient.ConnectionStatus != TcpConnectionStatus.ConnectionEstablished)
             {
                 throw new RemotingServerNotConnectedException(_serverEndPoint);
