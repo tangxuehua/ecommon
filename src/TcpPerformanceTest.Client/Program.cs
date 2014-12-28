@@ -22,7 +22,8 @@ namespace TcpPerformanceTest.Client
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net();
+                .UseLog4Net()
+                .RegisterUnhandledExceptionHandler();
 
             var totalHandled = 0;
             var watch = default(Stopwatch);

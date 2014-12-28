@@ -20,7 +20,8 @@ namespace RemotingPerformanceTest.Client
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net();
+                .UseLog4Net()
+                .RegisterUnhandledExceptionHandler();
 
             var clientCount = 4;
             var clients = new List<SocketRemotingClient>();

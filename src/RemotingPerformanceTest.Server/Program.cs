@@ -19,7 +19,8 @@ namespace RemotingPerformanceTest.Server
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net();
+                .UseLog4Net()
+                .RegisterUnhandledExceptionHandler();
             var server = new SocketRemotingServer("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
             server.RegisterRequestHandler(100, new RequestHandler());
             server.Start();

@@ -18,7 +18,8 @@ namespace TcpPerformanceTest.Server
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net();
+                .UseLog4Net()
+                .RegisterUnhandledExceptionHandler();
 
             var sendReply = true;
             int totalHandled = 0;
