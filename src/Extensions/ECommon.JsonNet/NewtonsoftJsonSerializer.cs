@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using ECommon.Serializing;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -15,18 +13,15 @@ namespace ECommon.JsonNet
     /// </summary>
     public class NewtonsoftJsonSerializer : IJsonSerializer
     {
-        private readonly JsonSerializerSettings _settings;
+        public JsonSerializerSettings Settings { get; private set; }
 
-        public NewtonsoftJsonSerializer(params Type[] creationWithoutConstructorTypes)
+        public NewtonsoftJsonSerializer()
         {
-            _settings = new JsonSerializerSettings
+            Settings = new JsonSerializerSettings
             {
-                Converters = new List<JsonConverter>
-                {
-                    new IsoDateTimeConverter(),
-                    new CreateObjectWithoutConstructorConverter(creationWithoutConstructorTypes)
-                },
-                ContractResolver = new CustomContractResolver()
+                Converters = new List<JsonConverter> { new IsoDateTimeConverter() },
+                ContractResolver = new CustomContractResolver(),
+                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
             };
         }
 
@@ -36,7 +31,7 @@ namespace ECommon.JsonNet
         /// <returns></returns>
         public string Serialize(object obj)
         {
-            return obj == null ? null : JsonConvert.SerializeObject(obj, _settings);
+            return obj == null ? null : JsonConvert.SerializeObject(obj, Settings);
         }
         /// <summary>Deserialize a json string to an object.
         /// </summary>
@@ -45,7 +40,7 @@ namespace ECommon.JsonNet
         /// <returns></returns>
         public object Deserialize(string value, Type type)
         {
-            return JsonConvert.DeserializeObject(value, type, _settings);
+            return JsonConvert.DeserializeObject(value, type, Settings);
         }
         /// <summary>Deserialize a json string to a strong type object.
         /// </summary>
@@ -54,42 +49,9 @@ namespace ECommon.JsonNet
         /// <returns></returns>
         public T Deserialize<T>(string value) where T : class
         {
-            return JsonConvert.DeserializeObject<T>(JObject.Parse(value).ToString(), _settings);
+            return JsonConvert.DeserializeObject<T>(JObject.Parse(value).ToString(), Settings);
         }
 
-        class CreateObjectWithoutConstructorConverter : JsonConverter
-        {
-            private readonly IEnumerable<Type> _creationWithoutConstructorTypes;
-
-            public CreateObjectWithoutConstructorConverter(IEnumerable<Type> creationWithoutConstructorTypes)
-            {
-                _creationWithoutConstructorTypes = creationWithoutConstructorTypes;
-            }
-
-            public override bool CanWrite
-            {
-                get { return false; }
-            }
-            public override bool CanConvert(Type objectType)
-            {
-                return _creationWithoutConstructorTypes.Any(x => x.IsAssignableFrom(objectType));
-            }
-            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-            {
-                throw new NotSupportedException("CreateObjectWithoutConstructorConverter should only be used while deserializing.");
-            }
-
-            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-            {
-                if (reader.TokenType == JsonToken.Null)
-                {
-                    return null;
-                }
-                var target = FormatterServices.GetUninitializedObject(objectType);
-                serializer.Populate(reader, target);
-                return target;
-            }
-        }
         class CustomContractResolver : DefaultContractResolver
         {
             protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)

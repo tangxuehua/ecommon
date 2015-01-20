@@ -11,9 +11,9 @@ namespace ECommon.JsonNet
         /// <summary>Use Json.Net as the json serializer.
         /// </summary>
         /// <returns></returns>
-        public static Configuration UseJsonNet(this Configuration configuration, params Type[] creationWithoutConstructorTypes)
+        public static Configuration UseJsonNet(this Configuration configuration)
         {
-            configuration.SetDefault<IJsonSerializer, NewtonsoftJsonSerializer>(new NewtonsoftJsonSerializer(creationWithoutConstructorTypes));
+            configuration.SetDefault<IJsonSerializer, NewtonsoftJsonSerializer>(new NewtonsoftJsonSerializer());
             return configuration;
         }
     }
