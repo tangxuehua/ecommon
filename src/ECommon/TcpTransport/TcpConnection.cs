@@ -68,8 +68,8 @@ namespace ECommon.TcpTransport
         private readonly MemoryStream _memoryStream = new MemoryStream();
 
         private readonly object _receivingLock = new object();
-        private readonly object _sendingLock = new object();
-        private bool _isSending;
+        private int _isEnqueue;
+        private int _isSending;
         private int _closed;
 
         private Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> _receiveCallback;
@@ -83,54 +83,60 @@ namespace ECommon.TcpTransport
         private void InitSocket(Socket socket)
         {
             InitConnectionBase(socket);
-            lock (_sendingLock)
+
+            _socket = socket;
+            try
             {
-                _socket = socket;
-                try
-                {
-                    socket.NoDelay = true;
-                }
-                catch (ObjectDisposedException)
-                {
-                    CloseInternal(SocketError.Shutdown, "Socket disposed.");
-                    _socket = null;
-                    return;
-                }
-
-                var receiveSocketArgs = SocketArgsPool.Get();
-                _receiveSocketArgs = receiveSocketArgs;
-                _receiveSocketArgs.AcceptSocket = socket;
-                _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
-
-                var sendSocketArgs = SocketArgsPool.Get();
-                _sendSocketArgs = sendSocketArgs;
-                _sendSocketArgs.AcceptSocket = socket;
-                _sendSocketArgs.Completed += OnSendAsyncCompleted;
+                socket.NoDelay = true;
             }
+            catch (ObjectDisposedException)
+            {
+                CloseInternal(SocketError.Shutdown, "Socket disposed.");
+                _socket = null;
+                return;
+            }
+
+            var receiveSocketArgs = SocketArgsPool.Get();
+            _receiveSocketArgs = receiveSocketArgs;
+            _receiveSocketArgs.AcceptSocket = socket;
+            _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
+
+            var sendSocketArgs = SocketArgsPool.Get();
+            _sendSocketArgs = sendSocketArgs;
+            _sendSocketArgs.AcceptSocket = socket;
+            _sendSocketArgs.Completed += OnSendAsyncCompleted;
+
             StartReceive();
             TrySend();
         }
 
         public void EnqueueSend(IEnumerable<ArraySegment<byte>> data)
         {
-            lock (_sendingLock)
+            while (true)
             {
-                int bytes = 0;
-                foreach (var segment in data)
+                if (Interlocked.CompareExchange(ref _isEnqueue, 1, 0) == 0)
                 {
-                    _sendQueue.Enqueue(segment);
-                    bytes += segment.Count;
+                    foreach (var segment in data)
+                    {
+                        _sendQueue.Enqueue(segment);
+                    }
+                    break;
                 }
             }
+            Interlocked.Exchange(ref _isEnqueue, 0);
             TrySend();
         }
 
         private void TrySend()
         {
-            lock (_sendingLock)
+            if (Interlocked.CompareExchange(ref _isSending, 1, 0) != 0)
             {
-                if (_isSending || _sendQueue.Count == 0 || _socket == null) return;
-                _isSending = true;
+                return;
+            }
+            if (_sendQueue.Count == 0 || _socket == null)
+            {
+                Interlocked.Exchange(ref _isSending, 0);
+                return;
             }
 
             _memoryStream.SetLength(0);
@@ -176,10 +182,7 @@ namespace ECommon.TcpTransport
                     ReturnSendingSocketArgs();
                 else
                 {
-                    lock (_sendingLock)
-                    {
-                        _isSending = false;
-                    }
+                    Interlocked.Exchange(ref _isSending, 0);
                     TrySend();
                 }
             }
@@ -325,11 +328,7 @@ namespace ECommon.TcpTransport
                 _socket = null;
             }
 
-            lock (_sendingLock)
-            {
-                if (!_isSending)
-                    ReturnSendingSocketArgs();
-            }
+            ReturnSendingSocketArgs();
 
             var handler = ConnectionClosed;
             if (handler != null)

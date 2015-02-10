@@ -31,7 +31,7 @@ namespace RemotingPerformanceTest.Server
         {
             int totalHandled;
             Stopwatch watch;
-            byte[] response = new byte[1024];
+            byte[] response = new byte[100];
 
             public RemotingResponse HandleRequest(IRequestHandlerContext context, RemotingRequest request)
             {
