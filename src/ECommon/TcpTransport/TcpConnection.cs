@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -67,8 +68,8 @@ namespace ECommon.TcpTransport
         private readonly Queue<ReceivedData> _receiveQueue = new Queue<ReceivedData>();
         private readonly MemoryStream _memoryStream = new MemoryStream();
 
+        private readonly object _enqueueLock = new object();
         private readonly object _receivingLock = new object();
-        private int _isEnqueue;
         private int _isSending;
         private int _closed;
 
@@ -112,18 +113,13 @@ namespace ECommon.TcpTransport
 
         public void EnqueueSend(IEnumerable<ArraySegment<byte>> data)
         {
-            while (true)
+            lock (_enqueueLock)
             {
-                if (Interlocked.CompareExchange(ref _isEnqueue, 1, 0) == 0)
+                foreach (var segment in data)
                 {
-                    foreach (var segment in data)
-                    {
-                        _sendQueue.Enqueue(segment);
-                    }
-                    break;
+                    _sendQueue.Enqueue(segment);
                 }
             }
-            Interlocked.Exchange(ref _isEnqueue, 0);
             TrySend();
         }
 
@@ -133,7 +129,7 @@ namespace ECommon.TcpTransport
             {
                 return;
             }
-            if (_sendQueue.Count == 0 || _socket == null)
+            if (_socket == null)
             {
                 Interlocked.Exchange(ref _isSending, 0);
                 return;
@@ -147,6 +143,16 @@ namespace ECommon.TcpTransport
                 _memoryStream.Write(sendPiece.Array, sendPiece.Offset, sendPiece.Count);
                 if (_memoryStream.Length >= MaxSendPacketSize)
                     break;
+            }
+
+            if (_memoryStream.Length == 0)
+            {
+                Interlocked.Exchange(ref _isSending, 0);
+                if (_sendQueue.Count > 0)
+                {
+                    TrySend();
+                }
+                return;
             }
 
             _sendSocketArgs.SetBuffer(_memoryStream.GetBuffer(), 0, (int)_memoryStream.Length);
