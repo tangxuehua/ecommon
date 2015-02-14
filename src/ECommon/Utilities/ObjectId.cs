@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -20,6 +21,11 @@ namespace ECommon.Utilities
         private static int __staticMachine;
         private static short __staticPid;
         private static int __staticIncrement; // high byte will be masked out when generating new ObjectId
+        private static uint[] _lookup32 = Enumerable.Range(0, 256).Select(i =>
+        {
+            string s = i.ToString("x2");
+            return ((uint)s[0]) + ((uint)s[1] << 16);
+        }).ToArray();
 
         // we're using 14 bytes instead of 12 to hold the ObjectId in memory but unlike a byte[] there is no additional object on the heap
         // the extra two bytes are not visible to anyone outside of this class and they buy us considerable simplification
@@ -306,39 +312,11 @@ namespace ECommon.Utilities
             {
                 throw new ArgumentNullException("s");
             }
-            ObjectId objectId;
-            if (TryParse(s, out objectId))
+            if (s.Length != 24)
             {
-                return objectId;
+                throw new ArgumentOutOfRangeException("s", "ObjectId string value must be 24 characters.");
             }
-            else
-            {
-                var message = string.Format("'{0}' is not a valid 24 digit hex string.", s);
-                throw new FormatException(message);
-            }
-        }
-
-        /// <summary>
-        /// Tries to parse a string and create a new ObjectId.
-        /// </summary>
-        /// <param name="s">The string value.</param>
-        /// <param name="objectId">The new ObjectId.</param>
-        /// <returns>True if the string was parsed successfully.</returns>
-        public static bool TryParse(string s, out ObjectId objectId)
-        {
-            // don't throw ArgumentNullException if s is null
-            if (s != null && s.Length == 24)
-            {
-                byte[] bytes;
-                if (TryParseHexString(s, out bytes))
-                {
-                    objectId = new ObjectId(bytes);
-                    return true;
-                }
-            }
-
-            objectId = default(ObjectId);
-            return false;
+            return new ObjectId(ParseHexString(s));
         }
 
         /// <summary>
@@ -467,29 +445,9 @@ namespace ECommon.Utilities
         /// <returns>A string representation of the value.</returns>
         public override string ToString()
         {
-            return ToHexString(Pack(_timestamp, _machine, _pid, _increment));
+            return ToHexString(ToByteArray());
         }
 
-        /// <summary>
-        /// Tries to parse a hex string to a byte array.
-        /// </summary>
-        /// <param name="s">The hex string.</param>
-        /// <param name="bytes">A byte array.</param>
-        /// <returns>True if the hex string was successfully parsed.</returns>
-        public static bool TryParseHexString(string s, out byte[] bytes)
-        {
-            try
-            {
-                bytes = ParseHexString(s);
-            }
-            catch
-            {
-                bytes = null;
-                return false;
-            }
-
-            return true;
-        }
         /// <summary>
         /// Parses a hex string into its equivalent byte array.
         /// </summary>
@@ -502,32 +460,19 @@ namespace ECommon.Utilities
                 throw new ArgumentNullException("s");
             }
 
-            byte[] bytes;
-            if ((s.Length & 1) != 0)
+            if (s.Length % 2 == 1)
             {
-                s = "0" + s; // make length of s even
-            }
-            bytes = new byte[s.Length / 2];
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                string hex = s.Substring(2 * i, 2);
-                try
-                {
-                    byte b = Convert.ToByte(hex, 16);
-                    bytes[i] = b;
-                }
-                catch (FormatException e)
-                {
-                    throw new FormatException(
-                        string.Format("Invalid hex string {0}. Problem with substring {1} starting at position {2}",
-                        s,
-                        hex,
-                        2 * i),
-                        e);
-                }
+                throw new Exception("The binary key cannot have an odd number of digits");
             }
 
-            return bytes;
+            byte[] arr = new byte[s.Length >> 1];
+
+            for (int i = 0; i < s.Length >> 1; ++i)
+            {
+                arr[i] = (byte)((GetHexVal(s[i << 1]) << 4) + (GetHexVal(s[(i << 1) + 1])));
+            }
+
+            return arr;
         }
         /// <summary>
         /// Converts a byte array to a hex string.
@@ -540,12 +485,14 @@ namespace ECommon.Utilities
             {
                 throw new ArgumentNullException("bytes");
             }
-            var sb = new StringBuilder(bytes.Length * 2);
-            foreach (var b in bytes)
+            var result = new char[bytes.Length * 2];
+            for (int i = 0; i < bytes.Length; i++)
             {
-                sb.AppendFormat("{0:x2}", b);
+                var val = _lookup32[bytes[i]];
+                result[2 * i] = (char)val;
+                result[2 * i + 1] = (char)(val >> 16);
             }
-            return sb.ToString();
+            return new string(result);
         }
         /// <summary>
         /// Converts a DateTime to number of milliseconds since Unix epoch.
@@ -576,6 +523,17 @@ namespace ECommon.Utilities
             {
                 return dateTime.ToUniversalTime();
             }
+        }
+
+        private static int GetHexVal(char hex)
+        {
+            int val = (int)hex;
+            //For uppercase A-F letters:
+            //return val - (val < 58 ? 48 : 55);
+            //For lowercase a-f letters:
+            //return val - (val < 58 ? 48 : 87);
+            //Or the two combined, but a bit slower:
+            return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
         }
     }
 }
