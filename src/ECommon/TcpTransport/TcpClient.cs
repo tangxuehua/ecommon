@@ -59,7 +59,7 @@ namespace ECommon.TcpTransport
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
         }
-        public void SendMessage(byte[] message)
+        public void SendAsync(byte[] message)
         {
             _connection.EnqueueSend(_framer.FrameData(new ArraySegment<byte>(message, 0, message.Length)));
         }

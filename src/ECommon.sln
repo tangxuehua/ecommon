@@ -19,10 +19,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemotingPerformanceTest.Ser
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemotingPerformanceTest.Client", "RemotingPerformanceTest.Client\RemotingPerformanceTest.Client.csproj", "{F660BA75-73F3-42B4-8D9F-32C1DEA44647}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpPerformanceTest.Server", "TcpPerformanceTest.Server\TcpPerformanceTest.Server.csproj", "{123541C8-2234-47C6-A7DA-DF9C836721B9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpPerformanceTest.Client", "TcpPerformanceTest.Client\TcpPerformanceTest.Client.csproj", "{864BD06D-508C-4DD8-A771-EBF4B05BBC8F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Dapper", "Extensions\ECommon.Dapper\ECommon.Dapper.csproj", "{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{7BE51E52-AB70-45F7-9E47-DA5905B2E70E}"
@@ -66,14 +62,6 @@ Global
 		{F660BA75-73F3-42B4-8D9F-32C1DEA44647}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F660BA75-73F3-42B4-8D9F-32C1DEA44647}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F660BA75-73F3-42B4-8D9F-32C1DEA44647}.Release|Any CPU.Build.0 = Release|Any CPU
-		{123541C8-2234-47C6-A7DA-DF9C836721B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{123541C8-2234-47C6-A7DA-DF9C836721B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{123541C8-2234-47C6-A7DA-DF9C836721B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{123541C8-2234-47C6-A7DA-DF9C836721B9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{864BD06D-508C-4DD8-A771-EBF4B05BBC8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{864BD06D-508C-4DD8-A771-EBF4B05BBC8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{864BD06D-508C-4DD8-A771-EBF4B05BBC8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{864BD06D-508C-4DD8-A771-EBF4B05BBC8F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -88,8 +76,5 @@ Global
 		{C69CF480-4B6B-4006-8C17-43054C1EBE1C} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
 		{FA9D38B4-B327-4869-B45F-1FACAA354904} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523} = {82C86A3D-FDE3-4165-9379-584EB947D2FC}
-	EndGlobalSection
-	GlobalSection(Performance) = preSolution
-		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal

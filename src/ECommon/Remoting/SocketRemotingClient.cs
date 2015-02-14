@@ -93,7 +93,7 @@ namespace ECommon.Remoting
                 throw new ResponseFutureAddFailedException(request.Sequence);
             }
 
-            _tcpClient.SendMessage(RemotingUtil.BuildRequestMessage(request));
+            _tcpClient.SendAsync(RemotingUtil.BuildRequestMessage(request));
 
             return taskCompletionSource.Task;
         }
@@ -102,7 +102,7 @@ namespace ECommon.Remoting
             EnsureClientStatus();
 
             request.IsOneway = true;
-            _tcpClient.SendMessage(RemotingUtil.BuildRequestMessage(request));
+            _tcpClient.SendAsync(RemotingUtil.BuildRequestMessage(request));
         }
 
         private void ReceiveReplyMessage(byte[] message)

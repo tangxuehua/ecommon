@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -89,11 +88,11 @@ namespace ECommon.TcpTransport
             try
             {
                 socket.NoDelay = true;
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             }
             catch (ObjectDisposedException)
             {
                 CloseInternal(SocketError.Shutdown, "Socket disposed.");
-                _socket = null;
                 return;
             }
 
@@ -123,32 +122,39 @@ namespace ECommon.TcpTransport
             TrySend();
         }
 
+        private bool EnterSending()
+        {
+            return Interlocked.CompareExchange(ref _isSending, 1, 0) == 0;
+        }
+        private void ExitSending()
+        {
+            Interlocked.Exchange(ref _isSending, 0);
+        }
         private void TrySend()
         {
-            if (Interlocked.CompareExchange(ref _isSending, 1, 0) != 0)
-            {
-                return;
-            }
+            if (!EnterSending()) return;
+
             if (_socket == null)
             {
-                Interlocked.Exchange(ref _isSending, 0);
+                ExitSending();
                 return;
             }
 
             _memoryStream.SetLength(0);
-
             ArraySegment<byte> sendPiece;
             while (_sendQueue.TryDequeue(out sendPiece))
             {
                 _memoryStream.Write(sendPiece.Array, sendPiece.Offset, sendPiece.Count);
                 if (_memoryStream.Length >= MaxSendPacketSize)
+                {
                     break;
+                }
             }
 
             if (_memoryStream.Length == 0)
             {
-                Interlocked.Exchange(ref _isSending, 0);
-                if (_sendQueue.Count > 0)
+                ExitSending();
+                if (!_sendQueue.IsEmpty)
                 {
                     TrySend();
                 }
@@ -161,17 +167,19 @@ namespace ECommon.TcpTransport
             {
                 var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
                 if (!firedAsync)
+                {
                     ProcessSend(_sendSocketArgs);
+                }
             }
             catch (ObjectDisposedException)
             {
                 ReturnSendingSocketArgs();
+                CloseInternal(SocketError.Shutdown, "Socket disposed.");
             }
         }
 
         private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
-            // No other code should go here. All handling is the same for sync/async completion.
             ProcessSend(e);
         }
 
@@ -185,10 +193,12 @@ namespace ECommon.TcpTransport
             else
             {
                 if (_closed != 0)
+                {
                     ReturnSendingSocketArgs();
+                }
                 else
                 {
-                    Interlocked.Exchange(ref _isSending, 0);
+                    ExitSending();
                     TrySend();
                 }
             }
@@ -349,7 +359,9 @@ namespace ECommon.TcpTransport
                 socketArgs.Completed -= OnSendAsyncCompleted;
                 socketArgs.AcceptSocket = null;
                 if (socketArgs.Buffer != null)
+                {
                     socketArgs.SetBuffer(null, 0, 0);
+                }
                 SocketArgsPool.Return(socketArgs);
             }
         }

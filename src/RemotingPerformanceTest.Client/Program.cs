@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using ECommon.Autofac;
 using ECommon.Configurations;
 using ECommon.Log4Net;
@@ -13,6 +12,8 @@ namespace RemotingPerformanceTest.Client
 {
     class Program
     {
+        static SocketRemotingClient _remotingClient;
+
         static void Main(string[] args)
         {
             Configuration
@@ -22,37 +23,61 @@ namespace RemotingPerformanceTest.Client
                 .UseLog4Net()
                 .RegisterUnhandledExceptionHandler();
 
-            var messageSize = 100;
-            var messageCount = 5000000;
+            _remotingClient = new SocketRemotingClient("Client", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
+            _remotingClient.Start();
+
+            SendMessageSync();
+            SendMessageAsync();
+
+            Console.ReadLine();
+        }
+
+        static void SendMessageSync()
+        {
+            Console.WriteLine("----SendMessageSync Test----");
+
+            var messageSize = 300;
+            var messageCount = 100000;
+            var printSize = 10000;
             var message = new byte[messageSize];
-            var totalSent = 0;
-            var watch = default(Stopwatch);
+            var watch = Stopwatch.StartNew();
 
-            var client = new SocketRemotingClient("Client", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
-            client.Start();
-
-            for (var i = 0; i < messageCount; i++)
+            for (var i = 1; i <= messageCount; i++)
             {
-                client.InvokeAsync(new RemotingRequest(100, message), 100000000).ContinueWith(task =>
+                var response = _remotingClient.InvokeSync(new RemotingRequest(100, message), 10000);
+                if (i % printSize == 0)
                 {
-                    if (task.Exception != null)
+                    Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", i, watch.ElapsedMilliseconds);
+                }
+            }
+        }
+        static void SendMessageAsync()
+        {
+            Console.WriteLine("----SendMessageAsync Test----");
+
+            var messageSize = 300;
+            var messageCount = 1000000;
+            var printSize = 10000;
+            var message = new byte[messageSize];
+            var sentCount = 0L;
+
+            var watch = Stopwatch.StartNew();
+            for (var i = 1; i <= messageCount; i++)
+            {
+                _remotingClient.InvokeAsync(new RemotingRequest(100, message), 100000).ContinueWith(t =>
+                {
+                    if (t.Exception != null)
                     {
-                        Console.WriteLine("sent has exception, errorMsg:{0}", task.Exception.InnerExceptions[0].Message);
+                        Console.WriteLine(t);
                         return;
                     }
-                    var local = Interlocked.Increment(ref totalSent);
-                    if (local == 1)
+                    var current = Interlocked.Increment(ref sentCount);
+                    if (current % printSize == 0)
                     {
-                        watch = Stopwatch.StartNew();
-                    }
-                    if (local % 10000 == 0)
-                    {
-                        Console.WriteLine("handle response, size:" + task.Result.Body.Length + ", count:" + local + ", timeSpent:" + watch.ElapsedMilliseconds + "ms");
+                        Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, watch.ElapsedMilliseconds);
                     }
                 });
             }
-
-            Console.ReadLine();
         }
     }
 }

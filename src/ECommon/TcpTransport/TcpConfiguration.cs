@@ -17,7 +17,7 @@ namespace ECommon.TcpTransport
 
         public TcpConfiguration()
         {
-            MaxSendPacketSize = 64 * 1024;
+            MaxSendPacketSize = 128 * 1024;
             SocketCloseTimeoutMs = 500;
             AcceptBacklogCount = 1000;
             ConcurrentAccepts = 1;
