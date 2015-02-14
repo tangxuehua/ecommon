@@ -6,6 +6,9 @@ namespace ECommon.Logging
     /// </summary>
     public interface ILogger
     {
+        /// <summary>Represents whether the debug log level is enabled.
+        /// </summary>
+        bool IsDebugEnabled { get; }
         /// <summary>Write a debug level log message.
         /// </summary>
         /// <param name="message"></param>
