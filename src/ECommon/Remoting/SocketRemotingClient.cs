@@ -32,7 +32,7 @@ namespace ECommon.Remoting
         private int _scanTimeoutRequestTaskId;
         private int _isReconnecting;
 
-        public SocketRemotingClient(string name, IPEndPoint serverEndPoint, RemotingClientSetting setting = null, ISocketClientEventListener eventListener = null)
+        public SocketRemotingClient(IPEndPoint serverEndPoint, RemotingClientSetting setting = null, ISocketClientEventListener eventListener = null)
         {
             _sync = new object();
             _serverEndPoint = serverEndPoint;
