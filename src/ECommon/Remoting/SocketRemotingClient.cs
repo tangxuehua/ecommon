@@ -97,7 +97,7 @@ namespace ECommon.Remoting
 
             return taskCompletionSource.Task;
         }
-        public void InvokeOneway(RemotingRequest request, int timeoutMillis)
+        public void InvokeOneway(RemotingRequest request)
         {
             EnsureClientStatus();
 
