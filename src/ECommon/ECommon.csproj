@@ -67,14 +67,14 @@
     <Compile Include="Remoting\RemotingUtil.cs" />
     <Compile Include="Remoting\ResponseFuture.cs" />
     <Compile Include="Remoting\SocketChannel.cs" />
+    <Compile Include="Retring\AsyncTaskResult.cs" />
+    <Compile Include="Retring\IOException.cs" />
+    <Compile Include="Retring\IOHelper.cs" />
     <Compile Include="Scheduling\LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="TcpTransport\TcpClient.cs" />
     <Compile Include="Remoting\SocketRemotingClient.cs" />
     <Compile Include="Remoting\SocketRemotingServer.cs" />
     <Compile Include="Remoting\SocketRequestHandlerContext.cs" />
-    <Compile Include="Retring\ActionInfo.cs" />
-    <Compile Include="Retring\ActionExecutionService.cs" />
-    <Compile Include="Retring\IActionExecutionService.cs" />
     <Compile Include="Serializing\DefaultBinarySerializer.cs" />
     <Compile Include="Serializing\NotImplementedJsonSerializer.cs" />
     <Compile Include="Serializing\IBinarySerializer.cs" />

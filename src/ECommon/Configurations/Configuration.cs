@@ -52,7 +52,7 @@ namespace ECommon.Configurations
             SetDefault<IBinarySerializer, DefaultBinarySerializer>();
             SetDefault<IJsonSerializer, NotImplementedJsonSerializer>();
             SetDefault<IScheduleService, ScheduleService>();
-            SetDefault<IActionExecutionService, ActionExecutionService>(LifeStyle.Transient);
+            SetDefault<IOHelper, IOHelper>();
             return this;
         }
         public Configuration RegisterUnhandledExceptionHandler()

@@ -23,7 +23,7 @@ namespace RemotingPerformanceTest.Client
                 .UseLog4Net()
                 .RegisterUnhandledExceptionHandler();
 
-            _remotingClient = new SocketRemotingClient("Client", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
+            _remotingClient = new SocketRemotingClient(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
             _remotingClient.Start();
 
             SendMessageSync();
@@ -44,7 +44,7 @@ namespace RemotingPerformanceTest.Client
 
             for (var i = 1; i <= messageCount; i++)
             {
-                var response = _remotingClient.InvokeSync(new RemotingRequest(100, message), 10000);
+                _remotingClient.InvokeSync(new RemotingRequest(100, message), 10000);
                 if (i % printSize == 0)
                 {
                     Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", i, watch.ElapsedMilliseconds);

@@ -179,7 +179,7 @@ namespace ECommon.TcpTransport
             {
                 byte[] data = new byte[message.Count];
                 Array.Copy(message.Array, message.Offset, data, 0, message.Count);
-                _messageHandler(_connection, data, reply => _connection.EnqueueSend(_messageFramer.FrameData(new ArraySegment<byte>(reply, 0, reply.Length))));
+                _messageHandler(_connection, data, reply => _connection.SendAsync(_messageFramer.FrameData(new ArraySegment<byte>(reply, 0, reply.Length))));
             }
             private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
             {

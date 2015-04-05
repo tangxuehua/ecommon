@@ -27,9 +27,5 @@ namespace ECommon.Remoting
         {
             _taskSource.TrySetResult(response);
         }
-        public void SetException(Exception exception)
-        {
-            _taskSource.TrySetException(exception);
-        }
     }
 }

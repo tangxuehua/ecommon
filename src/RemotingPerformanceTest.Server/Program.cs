@@ -33,7 +33,7 @@ namespace RemotingPerformanceTest.Server
             Stopwatch watch;
             byte[] response = new byte[100];
 
-            public RemotingResponse HandleRequest(IRequestHandlerContext context, RemotingRequest request)
+            public RemotingResponse HandleRequest(IRequestHandlerContext context, RemotingRequest remotingRequest)
             {
                 var local = Interlocked.Increment(ref totalHandled);
                 if (local == 1)
@@ -42,9 +42,9 @@ namespace RemotingPerformanceTest.Server
                 }
                 if (local % 10000 == 0)
                 {
-                    Console.WriteLine("handle request, size:" + request.Body.Length + ", count:" + local + ", timeSpent:" + watch.ElapsedMilliseconds + "ms");
+                    Console.WriteLine("handle request, size:" + remotingRequest.Body.Length + ", count:" + local + ", timeSpent:" + watch.ElapsedMilliseconds + "ms");
                 }
-                return new RemotingResponse(10, request.Sequence, response);
+                return new RemotingResponse(10, remotingRequest.Sequence, response);
             }
         }
 

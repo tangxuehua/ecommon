@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Socketing;
@@ -18,6 +19,7 @@ namespace ECommon.TcpTransport
         private readonly IPEndPoint _serverEndPoint;
         private readonly ISocketClientEventListener _eventListener;
         private readonly Action<byte[]> _replyHandler;
+        private readonly ManualResetEvent _waitHandle;
         private readonly ILogger _logger;
 
         public bool IsStopped { get; private set; }
@@ -37,14 +39,16 @@ namespace ECommon.TcpTransport
             _eventListener = eventListener;
             _framer = new LengthPrefixMessageFramer();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
+            _waitHandle = new ManualResetEvent(false);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
-        public void Start()
+        public void Start(int connectTimeoutMilliseconds = 5000)
         {
             _connection = new TcpClientConnector().ConnectTo(Guid.NewGuid(), _localEndPoint, _serverEndPoint, OnConnectionEstablished, OnConnectionFailed);
             _connection.ConnectionClosed += OnConnectionClosed;
             _connection.ReceiveAsync(OnRawDataReceived);
+            _waitHandle.WaitOne(connectTimeoutMilliseconds);
         }
         public void Stop()
         {
@@ -61,13 +65,14 @@ namespace ECommon.TcpTransport
         }
         public void SendAsync(byte[] message)
         {
-            _connection.EnqueueSend(_framer.FrameData(new ArraySegment<byte>(message, 0, message.Length)));
+            _connection.SendAsync(_framer.FrameData(new ArraySegment<byte>(message, 0, message.Length)));
         }
 
         private void OnConnectionEstablished(ITcpConnection connection)
         {
-            ConnectionStatus = TcpConnectionStatus.ConnectionEstablished;
+            ConnectionStatus = TcpConnectionStatus.Established;
             _logger.InfoFormat("TCP connection established: [remoteEndPoint:{0}, localEndPoint:{1}, connectionId:{2:B}].", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
+            _waitHandle.Set();
             if (_eventListener != null)
             {
                 _eventListener.OnConnectionEstablished(connection);
@@ -75,7 +80,7 @@ namespace ECommon.TcpTransport
         }
         private void OnConnectionFailed(ITcpConnection connection, SocketError socketError)
         {
-            ConnectionStatus = TcpConnectionStatus.ConnectionFailed;
+            ConnectionStatus = TcpConnectionStatus.Failed;
             _logger.InfoFormat("TCP connection failed: [remoteEndPoint:{0}, localEndPoint:{1}, connectionId:{2:B}, socketError:{3}].", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId, socketError);
             if (_eventListener != null)
             {
@@ -84,7 +89,7 @@ namespace ECommon.TcpTransport
         }
         private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
         {
-            ConnectionStatus = TcpConnectionStatus.ConnectionClosed;
+            ConnectionStatus = TcpConnectionStatus.Closed;
             _logger.InfoFormat("TCP connection closed: [remoteEndPoint:{0}, localEndPoint:{1}, connectionId:{2:B}, socketError:{3}].", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId, socketError);
             if (_eventListener != null)
             {
@@ -113,8 +118,9 @@ namespace ECommon.TcpTransport
     }
     public enum TcpConnectionStatus
     {
-        ConnectionEstablished,
-        ConnectionFailed,
-        ConnectionClosed
+        NotEstablished,
+        Established,
+        Failed,
+        Closed
     }
 }

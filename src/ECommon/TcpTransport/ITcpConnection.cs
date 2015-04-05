@@ -7,12 +7,10 @@ namespace ECommon.TcpTransport
     public interface ITcpConnection : ITcpConnectionInfo
     {
         event Action<ITcpConnection, SocketError> ConnectionClosed;
-
-        int SendQueueSize { get; }
         bool IsClosed { get; }
 
         void ReceiveAsync(Action<ITcpConnection, IEnumerable<ArraySegment<byte>>> callback);
-        void EnqueueSend(IEnumerable<ArraySegment<byte>> data);
+        void SendAsync(IEnumerable<ArraySegment<byte>> data);
         void Close();
         void Close(SocketError socketError, string reason);
     }

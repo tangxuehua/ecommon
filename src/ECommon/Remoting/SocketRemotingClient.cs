@@ -3,10 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ECommon.Components;
-using ECommon.Configurations;
 using ECommon.Extensions;
 using ECommon.Logging;
 using ECommon.Remoting.Exceptions;
@@ -19,6 +19,7 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingClient : ISocketClientEventListener
     {
+        private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
         private readonly RemotingClientSetting _setting;
         private readonly TcpSocketClient _tcpClient;
         private readonly object _sync;
@@ -46,9 +47,9 @@ namespace ECommon.Remoting
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
-        public void Start()
+        public void Start(int connectTimeoutMilliseconds = 5000)
         {
-            StartTcpClient();
+            StartTcpClient(connectTimeoutMilliseconds);
             StartHandleMessageWorker();
             StartScanTimeoutRequestTask();
         }
@@ -58,10 +59,10 @@ namespace ECommon.Remoting
             StopHandleMessageWorker();
             StopTcpClient();
         }
-        public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
+        public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis = 5000)
         {
             var task = InvokeAsync(request, timeoutMillis);
-            var response = task.WaitResult<RemotingResponse>(timeoutMillis);
+            var response = task.WaitResult<RemotingResponse>(timeoutMillis + 1000);
 
             if (response == null)
             {
@@ -81,7 +82,7 @@ namespace ECommon.Remoting
 
             return response;
         }
-        public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis)
+        public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis = 5000)
         {
             EnsureClientStatus();
 
@@ -139,7 +140,7 @@ namespace ECommon.Remoting
                 ResponseFuture responseFuture;
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
-                    responseFuture.SetException(new RemotingTimeoutException(_serverEndPoint, responseFuture.Request, responseFuture.TimeoutMillis));
+                    responseFuture.SetResponse(new RemotingResponse(0, responseFuture.Request.Sequence, TimeoutMessage));
                     _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
                 }
             }
@@ -151,7 +152,7 @@ namespace ECommon.Remoting
                 _logger.Error("Not allowed to reconnect server as the tcp client is stopped.");
                 return;
             }
-            if (_tcpClient.ConnectionStatus == TcpConnectionStatus.ConnectionEstablished)
+            if (_tcpClient.ConnectionStatus == TcpConnectionStatus.Established)
             {
                 return;
             }
@@ -184,9 +185,9 @@ namespace ECommon.Remoting
                 ReconnectServer();
             }
         }
-        private void StartTcpClient()
+        private void StartTcpClient(int connectTimeoutMilliseconds = 5000)
         {
-            _tcpClient.Start();
+            _tcpClient.Start(connectTimeoutMilliseconds);
         }
         private void StopTcpClient()
         {
@@ -227,9 +228,9 @@ namespace ECommon.Remoting
         }
         private void EnsureClientStatus()
         {
-            if (_tcpClient.ConnectionStatus != TcpConnectionStatus.ConnectionEstablished)
+            if (_tcpClient.ConnectionStatus != TcpConnectionStatus.Established)
             {
-                throw new RemotingServerNotConnectedException(_serverEndPoint);
+                throw new RemotingServerNotConnectedException(_serverEndPoint, _tcpClient.ConnectionStatus);
             }
         }
 

@@ -55,7 +55,6 @@ namespace ECommon.TcpTransport
 
         public event Action<ITcpConnection, SocketError> ConnectionClosed;
         public Guid ConnectionId { get { return _connectionId; } }
-        public int SendQueueSize { get { return _sendQueue.Count; } }
 
         private readonly Guid _connectionId;
 
@@ -110,7 +109,7 @@ namespace ECommon.TcpTransport
             TrySend();
         }
 
-        public void EnqueueSend(IEnumerable<ArraySegment<byte>> data)
+        public void SendAsync(IEnumerable<ArraySegment<byte>> data)
         {
             lock (_enqueueLock)
             {
