@@ -7,13 +7,13 @@ namespace ECommon.Utilities
         public static void NotNull<T>(T argument, string argumentName) where T : class
         {
             if (argument == null)
-                throw new ArgumentNullException(argumentName);
+                throw new ArgumentNullException(argumentName + " should not be null.");
         }
 
         public static void NotNullOrEmpty(string argument, string argumentName)
         {
             if (string.IsNullOrEmpty(argument))
-                throw new ArgumentNullException(argument, argumentName);
+                throw new ArgumentNullException(argument, argumentName + " should not be null or empty.");
         }
 
         public static void Positive(int number, string argumentName)

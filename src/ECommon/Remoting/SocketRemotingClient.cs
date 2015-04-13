@@ -149,7 +149,7 @@ namespace ECommon.Remoting
         {
             if (_tcpClient.IsStopped)
             {
-                _logger.Error("Not allowed to reconnect server as the tcp client is stopped.");
+                _logger.Info("Stop to reconnect to server as the tcp client is stopped.");
                 return;
             }
             if (_tcpClient.ConnectionStatus == TcpConnectionStatus.Established)
@@ -158,13 +158,13 @@ namespace ECommon.Remoting
             }
             if (Interlocked.CompareExchange(ref _isReconnecting, 1, 0) != 0)
             {
-                _logger.Info("Reconnect server is in progress, ignore the current reconnecting.");
+                _logger.Info("Reconnect to server is in progress, ignore the current reconnecting.");
                 return;
             }
 
             Thread.Sleep(_setting.ReconnectInterval);
 
-            _logger.InfoFormat("Try to reconnect to server:{0}.", _serverEndPoint);
+            _logger.InfoFormat("Try to reconnect to server: {0}.", _serverEndPoint);
 
             var hasException = false;
             try
