@@ -47,11 +47,12 @@ namespace ECommon.Remoting
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
-        public void Start(int connectTimeoutMilliseconds = 5000)
+        public SocketRemotingClient Start(int connectTimeoutMilliseconds = 5000)
         {
             StartTcpClient(connectTimeoutMilliseconds);
             StartHandleMessageWorker();
             StartScanTimeoutRequestTask();
+            return this;
         }
         public void Shutdown()
         {
