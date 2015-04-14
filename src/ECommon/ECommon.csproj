@@ -67,9 +67,9 @@
     <Compile Include="Remoting\RemotingUtil.cs" />
     <Compile Include="Remoting\ResponseFuture.cs" />
     <Compile Include="Remoting\SocketChannel.cs" />
-    <Compile Include="Retring\AsyncTaskResult.cs" />
-    <Compile Include="Retring\IOException.cs" />
-    <Compile Include="Retring\IOHelper.cs" />
+    <Compile Include="IO\AsyncTaskResult.cs" />
+    <Compile Include="IO\IOException.cs" />
+    <Compile Include="IO\IOHelper.cs" />
     <Compile Include="Scheduling\LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="TcpTransport\TcpClient.cs" />
     <Compile Include="Remoting\SocketRemotingClient.cs" />

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ECommon.Retring
+namespace ECommon.IO
 {
     /// <summary>Represents an io exception.
     /// </summary>

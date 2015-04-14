@@ -5,7 +5,7 @@ using ECommon.Extensions;
 using ECommon.Logging;
 using ECommon.Utilities;
 
-namespace ECommon.Retring
+namespace ECommon.IO
 {
     /// <summary>An IO action helper class.
     /// </summary>

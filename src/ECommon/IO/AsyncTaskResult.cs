@@ -1,4 +1,4 @@
-﻿namespace ECommon.Retring
+﻿namespace ECommon.IO
 {
     /// <summary>Represents an async task result.
     /// </summary>

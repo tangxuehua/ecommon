@@ -33,6 +33,11 @@ namespace ECommon.Remoting
         private int _scanTimeoutRequestTaskId;
         private int _isReconnecting;
 
+        public bool IsStopped
+        {
+            get { return _tcpClient.IsStopped; }
+        }
+
         public SocketRemotingClient(IPEndPoint serverEndPoint, RemotingClientSetting setting = null, ISocketClientEventListener eventListener = null)
         {
             _sync = new object();
