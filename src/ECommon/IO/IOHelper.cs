@@ -38,7 +38,7 @@ namespace ECommon.IO
             Action<int> mainAction,
             Action<TAsyncResult> successAction,
             Func<string> getContextInfoFunc,
-            Action failedAction,
+            Action<string> failedAction,
             int retryTimes,
             bool retryWhenFailed = false,
             int maxRetryTimes = 3,
@@ -55,18 +55,18 @@ namespace ECommon.IO
                     mainAction(currentRetryTimes + 1);
                 }
             });
-            var executeFailedAction = new Action(() =>
+            var executeFailedAction = new Action<string>(errorMessage =>
             {
                 try
                 {
                     if (failedAction != null)
                     {
-                        failedAction();
+                        failedAction(errorMessage);
                     }
                 }
-                catch (Exception unknownEx)
+                catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Failed to execute the failedCallbackAction of asyncAction:{0}, contextInfo:{1}", asyncActionName, getContextInfoFunc()), unknownEx);
+                    _logger.Error(string.Format("Failed to execute the failedCallbackAction of asyncAction:{0}, contextInfo:{1}", asyncActionName, getContextInfoFunc()), ex);
                 }
             });
             var processTaskException = new Action<Exception, int>((ex, currentRetryTimes) =>
@@ -85,7 +85,7 @@ namespace ECommon.IO
                     }
                     else
                     {
-                        executeFailedAction();
+                        executeFailedAction(ex.Message);
                     }
                 }
             });
@@ -98,8 +98,8 @@ namespace ECommon.IO
                 }
                 if (t.IsCanceled)
                 {
-                    _logger.ErrorFormat("Async task '{0}' was cancelled, contextInfo:{1}, current retryTimes:{2}, try to run the async task again.", asyncActionName, getContextInfoFunc(), retryTimes);
-                    retryAction(retryTimes);
+                    _logger.ErrorFormat("Async task '{0}' was cancelled, contextInfo:{1}, current retryTimes:{2}.", asyncActionName, getContextInfoFunc(), retryTimes);
+                    executeFailedAction(string.Format("Async task '{0}' was cancelled.", asyncActionName));
                     return;
                 }
                 var result = t.Result;
@@ -112,7 +112,7 @@ namespace ECommon.IO
                     }
                     else
                     {
-                        executeFailedAction();
+                        executeFailedAction(string.Format("Async task '{0}' result is null.", asyncActionName));
                     }
                     return;
                 }
@@ -130,14 +130,14 @@ namespace ECommon.IO
                 }
                 else if (result.Status == AsyncTaskStatus.Failed)
                 {
-                    _logger.ErrorFormat("Async task '{0}' was failed and will not be retry, contextInfo:{1}, current retryTimes:{2}, errorMsg:{3}", asyncActionName, getContextInfoFunc(), retryTimes, result.ErrorMessage);
+                    _logger.ErrorFormat("Async task '{0}' failed, contextInfo:{1}, current retryTimes:{2}, errorMsg:{3}", asyncActionName, getContextInfoFunc(), retryTimes, result.ErrorMessage);
                     if (retryWhenFailed)
                     {
                         retryAction(retryTimes);
                     }
                     else
                     {
-                        executeFailedAction();
+                        executeFailedAction(result.ErrorMessage);
                     }
                 }
             });
@@ -148,7 +148,7 @@ namespace ECommon.IO
             }
             catch (IOException ex)
             {
-                _logger.Error(string.Format("IOException raised when executing async task '{0}', contextInfo:{1}, current retryTimes:{2}, try to run the async task again.", asyncActionName, getContextInfoFunc(), retryTimes), ex);
+                _logger.Error(string.Format("IOException raised when executing async task '{0}', contextInfo:{1}, current retryTimes:{2}, try to execute the async task again.", asyncActionName, getContextInfoFunc(), retryTimes), ex);
                 retryAction(retryTimes);
             }
             catch (Exception ex)
@@ -160,7 +160,7 @@ namespace ECommon.IO
                 }
                 else
                 {
-                    executeFailedAction();
+                    executeFailedAction(ex.Message);
                 }
             }
         }
@@ -243,7 +243,7 @@ namespace ECommon.IO
             {
                 var errorMessage = string.Format("IOException raised when executing action '{0}', currentRetryTimes:{1}, maxRetryTimes:{2}, contextInfo:{3}", actionName, retryTimes, maxRetryTimes, getContextInfo());
                 _logger.Error(errorMessage, ex);
-                if (retryTimes > maxRetryTimes)
+                if (retryTimes >= maxRetryTimes)
                 {
                     if (!continueRetryWhenRetryFailed)
                     {
@@ -274,7 +274,7 @@ namespace ECommon.IO
             {
                 var errorMessage = string.Format("IOException raised when executing func '{0}', currentRetryTimes:{1}, maxRetryTimes:{2}, contextInfo:{3}", funcName, retryTimes, maxRetryTimes, getContextInfo());
                 _logger.Error(errorMessage, ex);
-                if (retryTimes > maxRetryTimes)
+                if (retryTimes >= maxRetryTimes)
                 {
                     if (!continueRetryWhenRetryFailed)
                     {
