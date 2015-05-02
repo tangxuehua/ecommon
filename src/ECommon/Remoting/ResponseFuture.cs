@@ -23,9 +23,9 @@ namespace ECommon.Remoting
         {
             return (DateTime.Now - BeginTime).TotalMilliseconds > TimeoutMillis;
         }
-        public void SetResponse(RemotingResponse response)
+        public bool SetResponse(RemotingResponse response)
         {
-            _taskSource.TrySetResult(response);
+            return _taskSource.TrySetResult(response);
         }
     }
 }
