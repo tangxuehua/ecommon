@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Configuration;
 using System.Diagnostics;
 using System.Net;
 using System.Threading;
@@ -6,8 +7,9 @@ using ECommon.Autofac;
 using ECommon.Configurations;
 using ECommon.Log4Net;
 using ECommon.Remoting;
-using ECommon.TcpTransport.Utils;
+using ECommon.TcpTransport;
 using ECommon.Utilities;
+using ECommonConfiguration = ECommon.Configurations.Configuration;
 
 namespace RemotingPerformanceTest.Server
 {
@@ -15,13 +17,24 @@ namespace RemotingPerformanceTest.Server
     {
         static void Main(string[] args)
         {
-            Configuration
+            var socketBufferSize = int.Parse(ConfigurationManager.AppSettings["SocketBufferSize"]);
+            var setting = new Setting
+            {
+                TcpConfiguration = new TcpConfiguration
+                {
+                    SocketBufferSize = socketBufferSize
+                }
+            };
+            ECommonConfiguration
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
                 .UseLog4Net()
                 .RegisterUnhandledExceptionHandler();
-            var server = new SocketRemotingServer("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000));
+
+            var bindingIP = ConfigurationManager.AppSettings["BindingAddress"];
+            var serverIP = string.IsNullOrEmpty(bindingIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(bindingIP);
+            var server = new SocketRemotingServer("Server", new IPEndPoint(serverIP, 5000));
             server.RegisterRequestHandler(100, new RequestHandler());
             server.Start();
             Console.ReadLine();
