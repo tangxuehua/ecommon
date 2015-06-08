@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ECommon.Autofac;
@@ -75,7 +76,7 @@ namespace RemotingPerformanceTest.Client
             {
                 for (var i = 1; i <= messageCount; i++)
                 {
-                    _remotingClient.InvokeAsync(new RemotingRequest(100, message)).ContinueWith(SendCallback);
+                    _remotingClient.InvokeAsync(new RemotingRequest(100, message), 200000).ContinueWith(SendCallback);
                 }
             }
 
@@ -88,6 +89,11 @@ namespace RemotingPerformanceTest.Client
             if (task.Exception != null)
             {
                 Console.WriteLine(task.Exception);
+                return;
+            }
+            if (task.Result.Code == 0)
+            {
+                Console.WriteLine(Encoding.UTF8.GetString(task.Result.Body));
                 return;
             }
             var current = Interlocked.Increment(ref _sentCount);
