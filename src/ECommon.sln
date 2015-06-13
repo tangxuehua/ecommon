@@ -28,6 +28,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{7BE51E
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Disruptor", "Disruptor\Disruptor.csproj", "{37FBDBE1-8524-4489-B082-CC109B0F5EA3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomic", "Atomic\Atomic.csproj", "{BDB4336E-54F2-475D-8193-B730C522261F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,6 +70,14 @@ Global
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01D042F4-AFF1-4F16-86EA-8D0EFB79C523}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37FBDBE1-8524-4489-B082-CC109B0F5EA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37FBDBE1-8524-4489-B082-CC109B0F5EA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37FBDBE1-8524-4489-B082-CC109B0F5EA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37FBDBE1-8524-4489-B082-CC109B0F5EA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDB4336E-54F2-475D-8193-B730C522261F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDB4336E-54F2-475D-8193-B730C522261F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDB4336E-54F2-475D-8193-B730C522261F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDB4336E-54F2-475D-8193-B730C522261F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
