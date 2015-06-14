@@ -6,8 +6,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Disruptor;
-using Disruptor.Dsl;
 using ECommon.Components;
 using ECommon.Extensions;
 using ECommon.Logging;
@@ -19,10 +17,6 @@ using TcpSocketClient = ECommon.TcpTransport.TcpClient;
 
 namespace ECommon.Remoting
 {
-    public sealed class ValueEvent
-    {
-        public byte[] Message { get; set; }
-    }
     public class SocketRemotingClient : ISocketClientEventListener
     {
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
