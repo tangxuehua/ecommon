@@ -205,6 +205,8 @@ namespace ECommon.Dapper
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns></returns>
@@ -217,6 +219,8 @@ namespace ECommon.Dapper
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns></returns>
@@ -226,12 +230,14 @@ namespace ECommon.Dapper
         }
         /// <summary>Query a list of data from table with specified condition.
         /// </summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static IEnumerable<T> QueryList<T>(this IDbConnection connection, object condition, string table, string columns = "*", bool isOr = false, IDbTransaction transaction = null, int? commandTimeout = null)
         {
@@ -239,12 +245,14 @@ namespace ECommon.Dapper
         }
         /// <summary>Query a list of data async from table with specified condition.
         /// </summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static Task<IEnumerable<T>> QueryListAsync<T>(this IDbConnection connection, object condition, string table, string columns = "*", bool isOr = false, IDbTransaction transaction = null, int? commandTimeout = null)
         {
@@ -256,10 +264,11 @@ namespace ECommon.Dapper
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
-        /// <param name="columns"></param>
         /// <param name="orderBy"></param>
         /// <param name="pageIndex"></param>
         /// <param name="pageSize"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns></returns>
@@ -272,10 +281,11 @@ namespace ECommon.Dapper
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
-        /// <param name="columns"></param>
         /// <param name="orderBy"></param>
         /// <param name="pageIndex"></param>
         /// <param name="pageSize"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
         /// <returns></returns>
@@ -285,16 +295,17 @@ namespace ECommon.Dapper
         }
         /// <summary>Query paged data from a single table.
         /// </summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
-        /// <param name="columns"></param>
         /// <param name="orderBy"></param>
         /// <param name="pageIndex"></param>
         /// <param name="pageSize"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static IEnumerable<T> QueryPaged<T>(this IDbConnection connection, dynamic condition, string table, string orderBy, int pageIndex, int pageSize, string columns = "*", bool isOr = false, IDbTransaction transaction = null, int? commandTimeout = null)
         {
@@ -312,16 +323,17 @@ namespace ECommon.Dapper
         }
         /// <summary>Query paged data async from a single table.
         /// </summary>
+        /// <typeparam name="T"></typeparam>
         /// <param name="connection"></param>
         /// <param name="condition"></param>
         /// <param name="table"></param>
-        /// <param name="columns"></param>
         /// <param name="orderBy"></param>
         /// <param name="pageIndex"></param>
         /// <param name="pageSize"></param>
+        /// <param name="columns"></param>
+        /// <param name="isOr"></param>
         /// <param name="transaction"></param>
         /// <param name="commandTimeout"></param>
-        /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public static Task<IEnumerable<T>> QueryPagedAsync<T>(this IDbConnection connection, dynamic condition, string table, string orderBy, int pageIndex, int pageSize, string columns = "*", bool isOr = false, IDbTransaction transaction = null, int? commandTimeout = null)
         {

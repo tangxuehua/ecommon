@@ -352,32 +352,46 @@ namespace ECommon.TcpTransport
 
         private void ReturnSendingSocketArgs()
         {
-            var socketArgs = Interlocked.Exchange(ref _sendSocketArgs, null);
-            if (socketArgs != null)
+            try
             {
-                socketArgs.Completed -= OnSendAsyncCompleted;
-                socketArgs.AcceptSocket = null;
-                if (socketArgs.Buffer != null)
+                var socketArgs = Interlocked.Exchange(ref _sendSocketArgs, null);
+                if (socketArgs != null)
                 {
-                    socketArgs.SetBuffer(null, 0, 0);
+                    socketArgs.Completed -= OnSendAsyncCompleted;
+                    socketArgs.AcceptSocket = null;
+                    if (socketArgs.Buffer != null)
+                    {
+                        socketArgs.SetBuffer(null, 0, 0);
+                    }
+                    SocketArgsPool.Return(socketArgs);
                 }
-                SocketArgsPool.Return(socketArgs);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Return sending socket event args failed.", ex);
             }
         }
 
         private void ReturnReceivingSocketArgs()
         {
-            var socketArgs = Interlocked.Exchange(ref _receiveSocketArgs, null);
-            if (socketArgs != null)
+            try
             {
-                socketArgs.Completed -= OnReceiveAsyncCompleted;
-                socketArgs.AcceptSocket = null;
-                if (socketArgs.Buffer != null)
+                var socketArgs = Interlocked.Exchange(ref _receiveSocketArgs, null);
+                if (socketArgs != null)
                 {
-                    BufferManager.CheckIn(new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count));
-                    socketArgs.SetBuffer(null, 0, 0);
+                    socketArgs.Completed -= OnReceiveAsyncCompleted;
+                    socketArgs.AcceptSocket = null;
+                    if (socketArgs.Buffer != null)
+                    {
+                        BufferManager.CheckIn(new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count));
+                        socketArgs.SetBuffer(null, 0, 0);
+                    }
+                    SocketArgsPool.Return(socketArgs);
                 }
-                SocketArgsPool.Return(socketArgs);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Return receiving socket event args failed.", ex);
             }
         }
 
