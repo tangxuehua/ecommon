@@ -25,9 +25,11 @@ namespace ECommon.Remoting
         private readonly object _sync;
         private readonly IPEndPoint _serverEndPoint;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
+        private readonly BlockingCollection<byte[]> _replyMessageQueue;
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
         private readonly ISocketClientEventListener _eventListener;
+        private readonly Worker _worker;
         private int _scanTimeoutRequestTaskId;
         private int _isReconnecting;
 
@@ -44,19 +46,23 @@ namespace ECommon.Remoting
             _setting = setting ?? new RemotingClientSetting();
             _tcpClient = new TcpSocketClient(_setting.LocalEndPoint, serverEndPoint, ReceiveReplyMessage, this);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
+            _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
+            _worker = new Worker("SocketRemotingClient.HandleReplyMessage", HandleReplyMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
         public SocketRemotingClient Start(int connectTimeoutMilliseconds = 5000)
         {
             StartTcpClient(connectTimeoutMilliseconds);
+            StartHandleMessageWorker();
             StartScanTimeoutRequestTask();
             return this;
         }
         public void Shutdown()
         {
             StopScanTimeoutRequestTask();
+            StopHandleMessageWorker();
             StopTcpClient();
         }
         public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis = 5000)
@@ -108,23 +114,28 @@ namespace ECommon.Remoting
 
         private void ReceiveReplyMessage(byte[] message)
         {
-            Task.Factory.StartNew(() =>
-            {
-                var remotingResponse = RemotingUtil.ParseResponse(message);
+            _replyMessageQueue.Add(message);
+        }
+        private void HandleReplyMessage()
+        {
+            var responseMessage = _replyMessageQueue.Take();
 
-                ResponseFuture responseFuture;
-                if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
+            if (responseMessage == null) return;
+
+            var remotingResponse = RemotingUtil.ParseResponse(responseMessage);
+
+            ResponseFuture responseFuture;
+            if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
+            {
+                if (responseFuture.SetResponse(remotingResponse))
                 {
-                    if (responseFuture.SetResponse(remotingResponse))
-                    {
-                        _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
-                    }
-                    else
-                    {
-                        _logger.ErrorFormat("Set remoting response failed, response:" + remotingResponse);
-                    }
+                    _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
                 }
-            });
+                else
+                {
+                    _logger.ErrorFormat("Set remoting response failed, response:" + remotingResponse);
+                }
+            }
         }
         private void ScanTimeoutRequest()
         {
@@ -193,6 +204,18 @@ namespace ECommon.Remoting
         private void StopTcpClient()
         {
             _tcpClient.Stop();
+        }
+        private void StartHandleMessageWorker()
+        {
+            _worker.Start();
+        }
+        private void StopHandleMessageWorker()
+        {
+            _worker.Stop();
+            if (_replyMessageQueue.Count == 0)
+            {
+                _replyMessageQueue.Add(null);
+            }
         }
         private void StartScanTimeoutRequestTask()
         {
