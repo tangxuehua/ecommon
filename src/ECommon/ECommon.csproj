@@ -44,37 +44,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configurations\Configuration.cs" />
-    <Compile Include="Configurations\Setting.cs" />
     <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
     <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="Extensions\TaskSchedulerExtensions.cs" />
     <Compile Include="Logging\EmptyLogger.cs" />
     <Compile Include="Logging\EmptyLoggerFactory.cs" />
+    <Compile Include="IO\AsyncTaskResult.cs" />
+    <Compile Include="IO\IOException.cs" />
+    <Compile Include="IO\IOHelper.cs" />
     <Compile Include="Remoting\Exceptions\ResponseFutureAddFailedException.cs" />
-    <Compile Include="Remoting\Exceptions\RemotingServerNotConnectedException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingRequestException.cs" />
+    <Compile Include="Remoting\Exceptions\RemotingServerUnAvailableException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingTimeoutException.cs" />
-    <Compile Include="Remoting\ISocketChannel.cs" />
     <Compile Include="Remoting\IRequestHandler.cs" />
     <Compile Include="Remoting\IRequestHandlerContext.cs" />
-    <Compile Include="Remoting\ISocketClientEventListener.cs" />
-    <Compile Include="Remoting\ISocketServerEventListener.cs" />
-    <Compile Include="Remoting\RemotingClientSetting.cs" />
     <Compile Include="Remoting\RemotingMessage.cs" />
     <Compile Include="Remoting\RemotingRequest.cs" />
     <Compile Include="Remoting\RemotingResponse.cs" />
     <Compile Include="Remoting\RemotingUtil.cs" />
     <Compile Include="Remoting\ResponseFuture.cs" />
-    <Compile Include="Remoting\SocketChannel.cs" />
-    <Compile Include="IO\AsyncTaskResult.cs" />
-    <Compile Include="IO\IOException.cs" />
-    <Compile Include="IO\IOHelper.cs" />
-    <Compile Include="Scheduling\LimitedConcurrencyLevelTaskScheduler.cs" />
-    <Compile Include="TcpTransport\TcpClient.cs" />
     <Compile Include="Remoting\SocketRemotingClient.cs" />
     <Compile Include="Remoting\SocketRemotingServer.cs" />
     <Compile Include="Remoting\SocketRequestHandlerContext.cs" />
+    <Compile Include="Remoting\SocketSetting.cs" />
+    <Compile Include="Scheduling\LimitedConcurrencyLevelTaskScheduler.cs" />
     <Compile Include="Serializing\DefaultBinarySerializer.cs" />
     <Compile Include="Serializing\NotImplementedJsonSerializer.cs" />
     <Compile Include="Serializing\IBinarySerializer.cs" />
@@ -84,27 +78,20 @@
     <Compile Include="Components\ObjectContainer.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\ILoggerFactory.cs" />
-    <Compile Include="TcpTransport\BufferManagement\BufferManager.cs" />
-    <Compile Include="TcpTransport\BufferManagement\BufferPool.cs" />
-    <Compile Include="TcpTransport\BufferManagement\BufferPoolStream.cs" />
-    <Compile Include="TcpTransport\BufferManagement\UnableToAllocateBufferException.cs" />
-    <Compile Include="TcpTransport\BufferManagement\UnableToCreateMemoryException.cs" />
-    <Compile Include="TcpTransport\Framing\IMessageFramer.cs" />
-    <Compile Include="TcpTransport\Framing\LengthPrefixMessageFramer.cs" />
-    <Compile Include="TcpTransport\Framing\LengthPrefixMessageFramerWithBufferPool.cs" />
-    <Compile Include="TcpTransport\Framing\PackageFramingException.cs" />
-    <Compile Include="TcpTransport\Framing\StxEtxMessageFramer.cs" />
-    <Compile Include="TcpTransport\ITcpConnectionInfo.cs" />
-    <Compile Include="TcpTransport\ITcpConnection.cs" />
-    <Compile Include="TcpTransport\SocketArgsPool.cs" />
-    <Compile Include="TcpTransport\TcpClientConnector.cs" />
-    <Compile Include="TcpTransport\TcpConfiguration.cs" />
-    <Compile Include="TcpTransport\TcpConnection.cs" />
-    <Compile Include="TcpTransport\TcpConnectionBase.cs" />
-    <Compile Include="TcpTransport\TcpServerListener.cs" />
-    <Compile Include="TcpTransport\TcpStats.cs" />
-    <Compile Include="TcpTransport\Utils\DumpHelper.cs" />
-    <Compile Include="TcpTransport\Utils\Empty.cs" />
+    <Compile Include="Socketing\BufferManagement\BufferManager.cs" />
+    <Compile Include="Socketing\BufferManagement\BufferPool.cs" />
+    <Compile Include="Socketing\BufferManagement\BufferPoolStream.cs" />
+    <Compile Include="Socketing\BufferManagement\UnableToAllocateBufferException.cs" />
+    <Compile Include="Socketing\BufferManagement\UnableToCreateMemoryException.cs" />
+    <Compile Include="Socketing\IConnectionEventListener.cs" />
+    <Compile Include="Socketing\ISocketServerEventListener.cs" />
+    <Compile Include="Socketing\ISocketClientEventListener.cs" />
+    <Compile Include="Socketing\TcpConnection.cs" />
+    <Compile Include="Socketing\ClientSocket.cs" />
+    <Compile Include="Socketing\Framing\IMessageFramer.cs" />
+    <Compile Include="Socketing\Framing\LengthPrefixMessageFramer.cs" />
+    <Compile Include="Socketing\ServerSocket.cs" />
+    <Compile Include="Socketing\SocketUtils.cs" />
     <Compile Include="Utilities\Ensure.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
@@ -115,10 +102,10 @@
     <Compile Include="Scheduling\ScheduleService.cs" />
     <Compile Include="Scheduling\Worker.cs" />
     <Compile Include="Extensions\ReaderWriterLockSlimExtensions.cs" />
-    <Compile Include="Utilities\SocketUtils.cs" />
     <Compile Include="Utilities\TypeUtils.cs" />
     <Compile Include="Utilities\ObjectUtils.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

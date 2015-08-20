@@ -4,32 +4,22 @@ using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Utilities;
 
-namespace ECommon.TcpTransport.Framing
+namespace ECommon.Socketing.Framing
 {
-
-    /// <summary>
-    /// Uses length-prefixed framing to encode outgoing messages and decode
-    /// incoming messages, using internal state and raising a callback once 
-    /// full message arrives.
-    /// </summary>
     public class LengthPrefixMessageFramer : IMessageFramer
     {
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(LengthPrefixMessageFramer).FullName);
 
         public const int HeaderLength = sizeof(Int32);
+        private readonly int _maxPackageSize;
+        private Action<ArraySegment<byte>> _receivedHandler;
 
         private byte[] _messageBuffer;
         private int _bufferIndex = 0;
-        private Action<ArraySegment<byte>> _receivedHandler;
-        private readonly int _maxPackageSize;
-
         private int _headerBytes = 0;
         private int _packageLength = 0;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="LengthPrefixMessageFramer"/> class.
-        /// </summary>
-        public LengthPrefixMessageFramer(int maxPackageSize = 64*1024*1024)
+        public LengthPrefixMessageFramer(int maxPackageSize = 64 * 1024 * 1024)
         {
             Ensure.Positive(maxPackageSize, "maxPackageSize");
             _maxPackageSize = maxPackageSize;
@@ -42,21 +32,34 @@ namespace ECommon.TcpTransport.Framing
             _packageLength = 0;
             _bufferIndex = 0;
         }
-
+        public IEnumerable<ArraySegment<byte>> FrameData(ArraySegment<byte> data)
+        {
+            var length = data.Count;
+            yield return new ArraySegment<byte>(new[] { (byte)length, (byte)(length >> 8), (byte)(length >> 16), (byte)(length >> 24) });
+            yield return data;
+        }
         public void UnFrameData(IEnumerable<ArraySegment<byte>> data)
         {
             if (data == null)
+            {
                 throw new ArgumentNullException("data");
-
+            }
             foreach (ArraySegment<byte> buffer in data)
             {
                 Parse(buffer);
             }
         }
-
         public void UnFrameData(ArraySegment<byte> data)
         {
             Parse(data);
+        }
+        public void RegisterMessageArrivedCallback(Action<ArraySegment<byte>> handler)
+        {
+            if (handler == null)
+            {
+                throw new ArgumentNullException("handler");
+            }
+            _receivedHandler = handler;
         }
 
         /// <summary>
@@ -78,11 +81,8 @@ namespace ECommon.TcpTransport.Framing
                     {
                         if (_packageLength <= 0 || _packageLength > _maxPackageSize)
                         {
-                            _logger.ErrorFormat("FRAMING ERROR! Data:\n{0}", Utils.DumpHelper.FormatBinaryDump(bytes));
-                            throw new PackageFramingException(string.Format("Package size is out of bounds: {0} (max: {1}).",
-                                                                            _packageLength, _maxPackageSize));
+                            throw new Exception(string.Format("Package size is out of bounds: {0} (max: {1}).", _packageLength, _maxPackageSize));
                         }
-
                         _messageBuffer = new byte[_packageLength];
                     }
                 }
@@ -104,23 +104,6 @@ namespace ECommon.TcpTransport.Framing
                     }
                 }
             }
-        }
-
-        public IEnumerable<ArraySegment<byte>> FrameData(ArraySegment<byte> data)
-        {
-            var length = data.Count;
-
-            yield return new ArraySegment<byte>(
-                new[] { (byte)length, (byte)(length >> 8), (byte)(length >> 16), (byte)(length >> 24) });
-            yield return data;
-        }
-
-        public void RegisterMessageArrivedCallback(Action<ArraySegment<byte>> handler)
-        {
-            if (handler == null)
-                throw new ArgumentNullException("handler");
-
-            _receivedHandler = handler;
         }
     }
 }

@@ -1,6 +1,6 @@
 using System;
 
-namespace ECommon.TcpTransport.BufferManagement
+namespace ECommon.Socketing.BufferManagement
 {
     public class UnableToCreateMemoryException : Exception
     {

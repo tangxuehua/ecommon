@@ -5,35 +5,42 @@ using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Socketing;
-using ECommon.TcpTransport;
 
 namespace ECommon.Remoting
 {
     public class SocketRemotingServer
     {
-        private readonly TcpServerListener _serverListener;
+        private readonly ServerSocket _serverSocket;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
         private readonly ILogger _logger;
 
-        public SocketRemotingServer(string name, IPEndPoint serverEndPoint, ISocketServerEventListener eventListener = null)
+        public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingServer(string name, IPEndPoint listeningEndPoint)
         {
-            _serverListener = new TcpServerListener(serverEndPoint, eventListener, HandleRemotingRequest);
+            _serverSocket = new ServerSocket(listeningEndPoint, HandleRemotingRequest);
             _requestHandlerDict = new Dictionary<int, IRequestHandler>();
-            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().FullName);
+            _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().Name);
         }
 
-        public void Start()
+        public SocketRemotingServer RegisterConnectionEventListener(IConnectionEventListener listener)
         {
-            _serverListener.Start();
+            _serverSocket.RegisterConnectionEventListener(listener);
+            return this;
         }
-        public void Shutdown()
+        public SocketRemotingServer Start()
         {
-            _serverListener.Stop();
+            _serverSocket.Start();
+            return this;
         }
-
-        public void RegisterRequestHandler(int requestCode, IRequestHandler requestHandler)
+        public SocketRemotingServer Shutdown()
+        {
+            _serverSocket.Shutdown();
+            return this;
+        }
+        public SocketRemotingServer RegisterRequestHandler(int requestCode, IRequestHandler requestHandler)
         {
             _requestHandlerDict[requestCode] = requestHandler;
+            return this;
         }
 
         private void HandleRemotingRequest(ITcpConnection connection, byte[] message, Action<byte[]> sendReplyAction)
@@ -52,7 +59,6 @@ namespace ECommon.Remoting
 
             try
             {
-                _logger.DebugFormat("Handling remoting request, request code:{0}, request sequence:{1}", remotingRequest.Code, remotingRequest.Sequence);
                 var remotingResponse = requestHandler.HandleRequest(requestHandlerContext, remotingRequest);
                 if (!remotingRequest.IsOneway && remotingResponse != null)
                 {

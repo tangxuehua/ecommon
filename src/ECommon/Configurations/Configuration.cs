@@ -9,25 +9,19 @@ namespace ECommon.Configurations
 {
     public class Configuration
     {
-        /// <summary>Get the configuration setting information.
-        /// </summary>
-        public Setting Setting { get; private set; }
         /// <summary>Provides the singleton access instance.
         /// </summary>
         public static Configuration Instance { get; private set; }
 
-        private Configuration(Setting setting)
-        {
-            Setting = setting ?? new Setting();
-        }
+        private Configuration() { }
 
-        public static Configuration Create(Setting setting = null)
+        public static Configuration Create()
         {
             if (Instance != null)
             {
                 throw new Exception("Could not create configuration instance twice.");
             }
-            Instance = new Configuration(setting);
+            Instance = new Configuration();
             return Instance;
         }
 

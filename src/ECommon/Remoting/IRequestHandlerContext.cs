@@ -1,10 +1,11 @@
 ﻿using System;
+using ECommon.Socketing;
 
 namespace ECommon.Remoting
 {
     public interface IRequestHandlerContext
     {
-        ISocketChannel Channel { get; }
+        ITcpConnection Connection { get; }
         Action<RemotingResponse> SendRemotingResponse { get; }
     }
 }

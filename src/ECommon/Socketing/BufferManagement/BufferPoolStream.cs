@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace ECommon.TcpTransport.BufferManagement
+namespace ECommon.Socketing.BufferManagement
 {
     public class BufferPoolStream : Stream
     {

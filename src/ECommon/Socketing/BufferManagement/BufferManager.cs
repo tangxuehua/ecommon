@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ECommon.TcpTransport.BufferManagement
+namespace ECommon.Socketing.BufferManagement
 {
     /// <summary>
     /// A manager to handle buffers for the socket connections

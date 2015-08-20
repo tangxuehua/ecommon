@@ -12,60 +12,66 @@ using ECommon.Logging;
 using ECommon.Remoting.Exceptions;
 using ECommon.Scheduling;
 using ECommon.Socketing;
-using ECommon.TcpTransport;
-using TcpSocketClient = ECommon.TcpTransport.TcpClient;
 
 namespace ECommon.Remoting
 {
-    public class SocketRemotingClient : ISocketClientEventListener
+    public class SocketRemotingClient
     {
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
-        private readonly RemotingClientSetting _setting;
-        private readonly TcpSocketClient _tcpClient;
-        private readonly object _sync;
-        private readonly IPEndPoint _serverEndPoint;
+        private EndPoint _serverEndPoint;
+        private EndPoint _localEndPoint;
+        private ClientSocket _clientSocket;
+        private readonly object _lockObject1;
+        private readonly object _lockObject2;
+        private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _replyMessageQueue;
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
-        private readonly ISocketClientEventListener _eventListener;
         private readonly Worker _worker;
         private int _scanTimeoutRequestTaskId;
-        private int _isReconnecting;
+        private int _reconnectServerTaskId;
+        private int _reconnecting = 0;
 
-        public bool IsStopped
+        public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingClient(EndPoint serverEndPoint, EndPoint localEndPoint = null)
         {
-            get { return _tcpClient.IsStopped; }
-        }
-
-        public SocketRemotingClient(IPEndPoint serverEndPoint, RemotingClientSetting setting = null, ISocketClientEventListener eventListener = null)
-        {
-            _sync = new object();
+            _lockObject1 = new object();
+            _lockObject2 = new object();
             _serverEndPoint = serverEndPoint;
-            _eventListener = eventListener;
-            _setting = setting ?? new RemotingClientSetting();
-            _tcpClient = new TcpSocketClient(_setting.LocalEndPoint, serverEndPoint, ReceiveReplyMessage, this);
+            _localEndPoint = localEndPoint;
+            _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, ReceiveReplyMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
+            _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _worker = new Worker("SocketRemotingClient.HandleReplyMessage", HandleReplyMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+
+            RegisterConnectionEventListener(new ConnectionEventListener(this));
         }
 
-        public SocketRemotingClient Start(int connectTimeoutMilliseconds = 5000)
+        public SocketRemotingClient RegisterConnectionEventListener(IConnectionEventListener listener)
         {
-            StartTcpClient(connectTimeoutMilliseconds);
+            _connectionEventListeners.Add(listener);
+            _clientSocket.RegisterConnectionEventListener(listener);
+            return this;
+        }
+        public SocketRemotingClient Start()
+        {
+            StartClientSocket();
             StartHandleMessageWorker();
             StartScanTimeoutRequestTask();
             return this;
         }
         public void Shutdown()
         {
+            StopReconnectServerTask();
             StopScanTimeoutRequestTask();
             StopHandleMessageWorker();
-            StopTcpClient();
+            ShutdownClientSocket();
         }
-        public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis = 5000)
+        public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
         {
             var task = InvokeAsync(request, timeoutMillis);
             var response = task.WaitResult<RemotingResponse>(timeoutMillis + 1000);
@@ -85,10 +91,9 @@ namespace ECommon.Remoting
                     throw new RemotingRequestException(_serverEndPoint, request, "Remoting response is null due to unkown exception.");
                 }
             }
-
             return response;
         }
-        public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis = 5000)
+        public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis)
         {
             EnsureClientStatus();
 
@@ -100,7 +105,7 @@ namespace ECommon.Remoting
                 throw new ResponseFutureAddFailedException(request.Sequence);
             }
 
-            _tcpClient.SendAsync(RemotingUtil.BuildRequestMessage(request));
+            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
 
             return taskCompletionSource.Task;
         }
@@ -109,10 +114,10 @@ namespace ECommon.Remoting
             EnsureClientStatus();
 
             request.IsOneway = true;
-            _tcpClient.SendAsync(RemotingUtil.BuildRequestMessage(request));
+            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
         }
 
-        private void ReceiveReplyMessage(byte[] message)
+        private void ReceiveReplyMessage(ITcpConnection connection, byte[] message)
         {
             _replyMessageQueue.Add(message);
         }
@@ -159,51 +164,34 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
-            if (_tcpClient.IsStopped)
-            {
-                _logger.Info("Stop to reconnect to server as the tcp client is stopped.");
-                return;
-            }
-            if (_tcpClient.ConnectionStatus == TcpConnectionStatus.Established)
-            {
-                return;
-            }
-            if (Interlocked.CompareExchange(ref _isReconnecting, 1, 0) != 0)
-            {
-                _logger.Info("Reconnect to server is in progress, ignore the current reconnecting.");
-                return;
-            }
+            _logger.InfoFormat("Try to reconnect to server, remote endpoint:{0}", _serverEndPoint);
 
-            Thread.Sleep(_setting.ReconnectInterval);
+            if (_clientSocket.IsConnected) return;
+            if (!EnterReconnecting()) return;
 
-            _logger.InfoFormat("Try to reconnect to server: {0}.", _serverEndPoint);
-
-            var hasException = false;
             try
             {
-                _tcpClient.ReconnectToServer();
+                _clientSocket.Shutdown();
+                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, ReceiveReplyMessage);
+                foreach (var listener in _connectionEventListeners)
+                {
+                    _clientSocket.RegisterConnectionEventListener(listener);
+                }
+                _clientSocket.Start();
             }
             catch (Exception ex)
             {
-                _logger.ErrorFormat("Reconnect to server has exception.", ex);
-                hasException = true;
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _isReconnecting, 0);
-            }
-            if (hasException)
-            {
-                ReconnectServer();
+                _logger.Error("Reconnect to server error.", ex);
+                ExitReconnecting();
             }
         }
-        private void StartTcpClient(int connectTimeoutMilliseconds = 5000)
+        private void StartClientSocket()
         {
-            _tcpClient.Start(connectTimeoutMilliseconds);
+            _clientSocket.Start();
         }
-        private void StopTcpClient()
+        private void ShutdownClientSocket()
         {
-            _tcpClient.Stop();
+            _clientSocket.Shutdown();
         }
         private void StartHandleMessageWorker()
         {
@@ -219,7 +207,7 @@ namespace ECommon.Remoting
         }
         private void StartScanTimeoutRequestTask()
         {
-            lock (_sync)
+            lock (_lockObject1)
             {
                 if (_scanTimeoutRequestTaskId == 0)
                 {
@@ -229,7 +217,7 @@ namespace ECommon.Remoting
         }
         private void StopScanTimeoutRequestTask()
         {
-            lock (_sync)
+            lock (_lockObject1)
             {
                 if (_scanTimeoutRequestTaskId > 0)
                 {
@@ -238,36 +226,68 @@ namespace ECommon.Remoting
                 }
             }
         }
+        private void StartReconnectServerTask()
+        {
+            lock (_lockObject2)
+            {
+                if (_reconnectServerTaskId == 0)
+                {
+                    _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+                }
+            }
+        }
+        private void StopReconnectServerTask()
+        {
+            lock (_lockObject2)
+            {
+                if (_reconnectServerTaskId > 0)
+                {
+                    _scheduleService.ShutdownTask(_reconnectServerTaskId);
+                    _reconnectServerTaskId = 0;
+                }
+            }
+        }
         private void EnsureClientStatus()
         {
-            if (_tcpClient.ConnectionStatus != TcpConnectionStatus.Established)
+            if (!_clientSocket.IsConnected)
             {
-                throw new RemotingServerNotConnectedException(_serverEndPoint, _tcpClient.ConnectionStatus);
+                throw new RemotingServerUnAvailableException(_serverEndPoint);
             }
+        }
+        private bool EnterReconnecting()
+        {
+            return Interlocked.CompareExchange(ref _reconnecting, 1, 0) == 0;
+        }
+        private void ExitReconnecting()
+        {
+            Interlocked.Exchange(ref _reconnecting, 0);
         }
 
-        void ISocketClientEventListener.OnConnectionEstablished(ITcpConnectionInfo connectionInfo)
+        class ConnectionEventListener : IConnectionEventListener
         {
-            if (_eventListener != null)
+            private readonly SocketRemotingClient _remotingClient;
+
+            public ConnectionEventListener(SocketRemotingClient remotingClient)
             {
-                _eventListener.OnConnectionEstablished(connectionInfo);
+                _remotingClient = remotingClient;
             }
-        }
-        void ISocketClientEventListener.OnConnectionFailed(ITcpConnectionInfo connectionInfo, SocketError socketError)
-        {
-            if (_eventListener != null)
+
+            public void OnConnectionAccepted(ITcpConnection connection) { }
+            public void OnConnectionEstablished(ITcpConnection connection)
             {
-                _eventListener.OnConnectionFailed(connectionInfo, socketError);
+                _remotingClient.StopReconnectServerTask();
+                _remotingClient.ExitReconnecting();
             }
-            ReconnectServer();
-        }
-        void ISocketClientEventListener.OnConnectionClosed(ITcpConnectionInfo connectionInfo, SocketError socketError)
-        {
-            if (_eventListener != null)
+            public void OnConnectionFailed(SocketError socketError)
             {
-                _eventListener.OnConnectionClosed(connectionInfo, socketError);
+                _remotingClient.ExitReconnecting();
+                _remotingClient.StartReconnectServerTask();
             }
-            ReconnectServer();
+            public void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
+            {
+                _remotingClient.ExitReconnecting();
+                _remotingClient.StartReconnectServerTask();
+            }
         }
     }
 }

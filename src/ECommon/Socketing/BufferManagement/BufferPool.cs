@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ECommon.TcpTransport.BufferManagement
+namespace ECommon.Socketing.BufferManagement
 {
     public class BufferPool : IDisposable
     {
