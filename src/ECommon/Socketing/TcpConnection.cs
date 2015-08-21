@@ -265,10 +265,6 @@ namespace ECommon.Socketing
         }
         private void OnMessageArrived(ArraySegment<byte> messageSegment)
         {
-            if (_messageArrivedHandler != null)
-            {
-
-            }
             byte[] message = new byte[messageSegment.Count];
             Array.Copy(messageSegment.Array, messageSegment.Offset, message, 0, messageSegment.Count);
             try
