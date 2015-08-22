@@ -6,18 +6,20 @@ namespace ECommon.Remoting
     {
         private static long _sequence;
 
-        public bool IsOneway { get; set; }
-
-        public RemotingRequest(short code, byte[] body) : this(code, body, false) { }
-        public RemotingRequest(short code, byte[] body, bool isOneway) : this(code, Interlocked.Increment(ref _sequence), body, isOneway) { }
-        public RemotingRequest(short code, long sequence, byte[] body, bool isOneway) : base(code, sequence, body)
-        {
-            IsOneway = isOneway;
-        }
+        public RemotingRequest(short code, byte[] body)
+            : base(code, body, Interlocked.Increment(ref _sequence)) { }
+        public RemotingRequest(short code, byte[] body, long sequence)
+            : base(code, body, sequence) { }
 
         public override string ToString()
         {
-            return string.Format("[Code:{0}, Sequence:{1}, IsOneway:{2}]", Code, Sequence, IsOneway);
+            return string.Format("[Code:{0}, Type:{1}, Sequence:{2}]", Code, Type, Sequence);
         }
+    }
+    public class RemotingRequestType
+    {
+        public const short Async        = 1;
+        public const short Oneway       = 2;
+        public const short Callback     = 3;
     }
 }

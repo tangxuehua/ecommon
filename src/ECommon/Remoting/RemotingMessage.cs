@@ -2,15 +2,16 @@
 {
     public class RemotingMessage
     {
-        public long Sequence { get; private set; }
         public short Code { get; private set; }
+        public short Type { get; internal set; }
         public byte[] Body { get; private set; }
+        public long Sequence { get; private set; }
 
-        public RemotingMessage(short code, long sequence, byte[] body)
+        public RemotingMessage(short code, byte[] body, long sequence)
         {
             Code = code;
-            Sequence = sequence;
             Body = body;
+            Sequence = sequence;
         }
     }
 }

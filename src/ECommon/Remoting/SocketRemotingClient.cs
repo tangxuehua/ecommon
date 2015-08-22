@@ -105,6 +105,7 @@ namespace ECommon.Remoting
         {
             EnsureClientStatus();
 
+            request.Type = RemotingRequestType.Async;
             var taskCompletionSource = new TaskCompletionSource<RemotingResponse>();
             var responseFuture = new ResponseFuture(request, timeoutMillis, taskCompletionSource);
 
@@ -120,13 +121,15 @@ namespace ECommon.Remoting
         public void InvokeWithCallback(RemotingRequest request)
         {
             EnsureClientStatus();
+
+            request.Type = RemotingRequestType.Callback;
             _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
         }
         public void InvokeOneway(RemotingRequest request)
         {
             EnsureClientStatus();
 
-            request.IsOneway = true;
+            request.Type = RemotingRequestType.Oneway;
             _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
         }
 
@@ -142,23 +145,27 @@ namespace ECommon.Remoting
 
             var remotingResponse = RemotingUtil.ParseResponse(responseMessage);
 
-            IResponseHandler responseHandler;
-            if (_responseHandlerDict.TryGetValue(remotingResponse.RequestCode, out responseHandler))
+            if (remotingResponse.Type == RemotingRequestType.Callback)
             {
-                responseHandler.HandleResponse(remotingResponse);
-                return;
-            }
-
-            ResponseFuture responseFuture;
-            if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
-            {
-                if (responseFuture.SetResponse(remotingResponse))
+                IResponseHandler responseHandler;
+                if (_responseHandlerDict.TryGetValue(remotingResponse.RequestCode, out responseHandler))
                 {
-                    _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
+                    responseHandler.HandleResponse(remotingResponse);
                 }
-                else
+            }
+            else if (remotingResponse.Type == RemotingRequestType.Async)
+            {
+                ResponseFuture responseFuture;
+                if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
                 {
-                    _logger.ErrorFormat("Set remoting response failed, response:" + remotingResponse);
+                    if (responseFuture.SetResponse(remotingResponse))
+                    {
+                        _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
+                    }
+                    else
+                    {
+                        _logger.ErrorFormat("Set remoting response failed, response:" + remotingResponse);
+                    }
                 }
             }
         }
@@ -177,7 +184,7 @@ namespace ECommon.Remoting
                 ResponseFuture responseFuture;
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
-                    responseFuture.SetResponse(new RemotingResponse(responseFuture.Request.Code, 0, responseFuture.Request.Sequence, TimeoutMessage));
+                    responseFuture.SetResponse(new RemotingResponse(responseFuture.Request.Code, 0, responseFuture.Request.Type, TimeoutMessage, responseFuture.Request.Sequence));
                     _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
                 }
             }

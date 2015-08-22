@@ -4,14 +4,16 @@
     {
         public short RequestCode { get; private set; }
 
-        public RemotingResponse(short requestCode, short responseCode, long sequence, byte[] body) : base(responseCode, sequence, body)
+        public RemotingResponse(short requestCode, short responseCode, short requestType, byte[] responseBody, long requestSequence)
+            : base(responseCode, responseBody, requestSequence)
         {
             RequestCode = requestCode;
+            Type = requestType;
         }
 
         public override string ToString()
         {
-            return string.Format("[RequestCode:{0}, ResponseCode:{1}, Sequence:{2}]", RequestCode, Code, Sequence);
+            return string.Format("[RequestCode:{0}, ResponseCode:{1}, RequestType:{2}, RequestSequence:{3}]", RequestCode, Code, Type, Sequence);
         }
     }
 }

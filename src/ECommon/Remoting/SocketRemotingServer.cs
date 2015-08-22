@@ -51,27 +51,27 @@ namespace ECommon.Remoting
             IRequestHandler requestHandler;
             if (!_requestHandlerDict.TryGetValue(remotingRequest.Code, out requestHandler))
             {
-                var errorMessage = string.Format("No request handler found for remoting request, request code:{0}", remotingRequest.Code);
+                var errorMessage = string.Format("No request handler found for remoting request:{0}", remotingRequest);
                 _logger.Error(errorMessage);
-                requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
+                requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(errorMessage), remotingRequest.Sequence));
                 return;
             }
 
             try
             {
                 var remotingResponse = requestHandler.HandleRequest(requestHandlerContext, remotingRequest);
-                if (!remotingRequest.IsOneway && remotingResponse != null)
+                if (remotingRequest.Type != RemotingRequestType.Oneway && remotingResponse != null)
                 {
                     requestHandlerContext.SendRemotingResponse(remotingResponse);
                 }
             }
             catch (Exception ex)
             {
-                var errorMessage = string.Format("Exception raised when handling remoting request, request code:{0}.", remotingRequest.Code);
+                var errorMessage = string.Format("Exception raised when handling remoting request:{0}.", remotingRequest);
                 _logger.Error(errorMessage, ex);
-                if (!remotingRequest.IsOneway)
+                if (remotingRequest.Type != RemotingRequestType.Oneway)
                 {
-                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(ex.Message), remotingRequest.Sequence));
                 }
             }
         }

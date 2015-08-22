@@ -61,7 +61,7 @@ namespace RemotingPerformanceTest.Server
                 {
                     Console.WriteLine("Handled request, size:{0}, count:{1}, timeSpent: {2}ms", remotingRequest.Body.Length, current, watch.ElapsedMilliseconds);
                 }
-                return new RemotingResponse(remotingRequest.Code, 10, remotingRequest.Sequence, response);
+                return new RemotingResponse(remotingRequest.Code, 10, remotingRequest.Type, response, remotingRequest.Sequence);
             }
 
             unsafe void SaveMessage(byte[] message)
