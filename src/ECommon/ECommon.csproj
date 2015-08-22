@@ -53,6 +53,7 @@
     <Compile Include="IO\AsyncTaskResult.cs" />
     <Compile Include="IO\IOException.cs" />
     <Compile Include="IO\IOHelper.cs" />
+    <Compile Include="Remoting\IResponseHandler.cs" />
     <Compile Include="Remoting\Exceptions\ResponseFutureAddFailedException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingRequestException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingServerUnAvailableException.cs" />

@@ -23,6 +23,7 @@ namespace ECommon.Remoting
         private ClientSocket _clientSocket;
         private readonly object _lockObject1;
         private readonly object _lockObject2;
+        private readonly Dictionary<int, IResponseHandler> _responseHandlerDict;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _replyMessageQueue;
@@ -43,6 +44,7 @@ namespace ECommon.Remoting
             _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, ReceiveReplyMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
+            _responseHandlerDict = new Dictionary<int, IResponseHandler>();
             _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _worker = new Worker("SocketRemotingClient.HandleReplyMessage", HandleReplyMessage);
@@ -51,6 +53,11 @@ namespace ECommon.Remoting
             RegisterConnectionEventListener(new ConnectionEventListener(this));
         }
 
+        public SocketRemotingClient RegisterResponseHandler(int requestCode, IResponseHandler responseHandler)
+        {
+            _responseHandlerDict[requestCode] = responseHandler;
+            return this;
+        }
         public SocketRemotingClient RegisterConnectionEventListener(IConnectionEventListener listener)
         {
             _connectionEventListeners.Add(listener);
@@ -71,6 +78,7 @@ namespace ECommon.Remoting
             StopHandleMessageWorker();
             ShutdownClientSocket();
         }
+
         public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
         {
             var task = InvokeAsync(request, timeoutMillis);
@@ -109,6 +117,11 @@ namespace ECommon.Remoting
 
             return taskCompletionSource.Task;
         }
+        public void InvokeWithCallback(RemotingRequest request)
+        {
+            EnsureClientStatus();
+            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
+        }
         public void InvokeOneway(RemotingRequest request)
         {
             EnsureClientStatus();
@@ -128,6 +141,13 @@ namespace ECommon.Remoting
             if (responseMessage == null) return;
 
             var remotingResponse = RemotingUtil.ParseResponse(responseMessage);
+
+            IResponseHandler responseHandler;
+            if (_responseHandlerDict.TryGetValue(remotingResponse.RequestCode, out responseHandler))
+            {
+                responseHandler.HandleResponse(remotingResponse);
+                return;
+            }
 
             ResponseFuture responseFuture;
             if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
@@ -157,7 +177,7 @@ namespace ECommon.Remoting
                 ResponseFuture responseFuture;
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
-                    responseFuture.SetResponse(new RemotingResponse(0, responseFuture.Request.Sequence, TimeoutMessage));
+                    responseFuture.SetResponse(new RemotingResponse(responseFuture.Request.Code, 0, responseFuture.Request.Sequence, TimeoutMessage));
                     _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
                 }
             }

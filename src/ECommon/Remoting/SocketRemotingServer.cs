@@ -53,7 +53,7 @@ namespace ECommon.Remoting
             {
                 var errorMessage = string.Format("No request handler found for remoting request, request code:{0}", remotingRequest.Code);
                 _logger.Error(errorMessage);
-                requestHandlerContext.SendRemotingResponse(new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
+                requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(errorMessage)));
                 return;
             }
 
@@ -71,7 +71,7 @@ namespace ECommon.Remoting
                 _logger.Error(errorMessage, ex);
                 if (!remotingRequest.IsOneway)
                 {
-                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(-1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Sequence, Encoding.UTF8.GetBytes(ex.Message)));
                 }
             }
         }

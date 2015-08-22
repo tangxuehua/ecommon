@@ -18,7 +18,8 @@ namespace RemotingPerformanceTest.Client
 {
     class Program
     {
-        static long _totalSentCount = 0L;
+        static long _sendingCount = 0;
+        static long _totalReceivedCount = 0;
         static ILogger _logger;
         static Stopwatch _watch = new Stopwatch();
 
@@ -60,35 +61,34 @@ namespace RemotingPerformanceTest.Client
         {
             Console.WriteLine("----Send message test----");
 
-            var sentCount = 0;
-
             if (mode == "Oneway")
             {
                 for (var i = 1; i <= count; i++)
                 {
-                    TrySendMessage(() => client.InvokeOneway(new RemotingRequest(100, message)));
-                    var current = Interlocked.Increment(ref _totalSentCount);
+                    TryAction(() => client.InvokeOneway(new RemotingRequest(100, message)));
+                    var current = Interlocked.Increment(ref _totalReceivedCount);
                     if (current % 10000 == 0)
                     {
                         Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
                     }
-                    var currentCount = Interlocked.Increment(ref sentCount);
-                    if (currentCount % batchSize == 0)
-                    {
-                        Thread.Sleep(sleepMilliseconds);
-                    }
+                    WaitIfNecessory(batchSize, sleepMilliseconds);
                 }
             }
             else if (mode == "Async")
             {
                 for (var i = 1; i <= count; i++)
                 {
-                    TrySendMessage(() => client.InvokeAsync(new RemotingRequest(100, message), 100000).ContinueWith(SendCallback));
-                    var current = Interlocked.Increment(ref sentCount);
-                    if (current % batchSize == 0)
-                    {
-                        Thread.Sleep(sleepMilliseconds);
-                    }
+                    TryAction(() => client.InvokeAsync(new RemotingRequest(100, message), 100000).ContinueWith(SendCallback));
+                    WaitIfNecessory(batchSize, sleepMilliseconds);
+                }
+            }
+            else if (mode == "Callback")
+            {
+                client.RegisterResponseHandler(100, new ResponseHandler());
+                for (var i = 1; i <= count; i++)
+                {
+                    TryAction(() => client.InvokeWithCallback(new RemotingRequest(100, message)));
+                    WaitIfNecessory(batchSize, sleepMilliseconds);
                 }
             }
         }
@@ -104,22 +104,47 @@ namespace RemotingPerformanceTest.Client
                 Console.WriteLine(Encoding.UTF8.GetString(task.Result.Body));
                 return;
             }
-            var current = Interlocked.Increment(ref _totalSentCount);
+            var current = Interlocked.Increment(ref _totalReceivedCount);
             if (current % 10000 == 0)
             {
                 Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
             }
         }
-        static void TrySendMessage(Action sendMessageAction)
+        static void TryAction(Action sendRequestAction)
         {
             try
             {
-                sendMessageAction();
+                sendRequestAction();
             }
             catch (Exception ex)
             {
-                _logger.ErrorFormat("Send message failed, errorMsg:{0}", ex.Message);
+                _logger.ErrorFormat("Send remoting request failed, errorMsg:{0}", ex.Message);
                 Thread.Sleep(5000);
+            }
+        }
+        static void WaitIfNecessory(int batchSize, int sleepMilliseconds)
+        {
+            var current = Interlocked.Increment(ref _sendingCount);
+            if (current % batchSize == 0)
+            {
+                Thread.Sleep(sleepMilliseconds);
+            }
+        }
+
+        class ResponseHandler : IResponseHandler
+        {
+            public void HandleResponse(RemotingResponse remotingResponse)
+            {
+                if (remotingResponse.Code <= 0)
+                {
+                    Console.WriteLine(Encoding.UTF8.GetString(remotingResponse.Body));
+                    return;
+                }
+                var current = Interlocked.Increment(ref _totalReceivedCount);
+                if (current % 10000 == 0)
+                {
+                    Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
+                }
             }
         }
     }

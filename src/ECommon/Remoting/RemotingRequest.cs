@@ -8,9 +8,9 @@ namespace ECommon.Remoting
 
         public bool IsOneway { get; set; }
 
-        public RemotingRequest(int code, byte[] body) : this(code, body, false) { }
-        public RemotingRequest(int code, byte[] body, bool isOneway) : this(code, Interlocked.Increment(ref _sequence), body, isOneway) { }
-        public RemotingRequest(int code, long sequence, byte[] body, bool isOneway) : base(code, sequence, body)
+        public RemotingRequest(short code, byte[] body) : this(code, body, false) { }
+        public RemotingRequest(short code, byte[] body, bool isOneway) : this(code, Interlocked.Increment(ref _sequence), body, isOneway) { }
+        public RemotingRequest(short code, long sequence, byte[] body, bool isOneway) : base(code, sequence, body)
         {
             IsOneway = isOneway;
         }

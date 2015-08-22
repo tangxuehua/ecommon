@@ -2,11 +2,16 @@
 {
     public class RemotingResponse : RemotingMessage
     {
-        public RemotingResponse(int code, long sequence, byte[] body) : base(code, sequence, body) { }
+        public short RequestCode { get; private set; }
+
+        public RemotingResponse(short requestCode, short responseCode, long sequence, byte[] body) : base(responseCode, sequence, body)
+        {
+            RequestCode = requestCode;
+        }
 
         public override string ToString()
         {
-            return string.Format("[Code:{0}, Sequence:{1}]", Code, Sequence);
+            return string.Format("[RequestCode:{0}, ResponseCode:{1}, Sequence:{2}]", RequestCode, Code, Sequence);
         }
     }
 }
