@@ -36,9 +36,9 @@ namespace ECommon.Utilities
 
         private static void ReleaseLockObject(object key, LockObject lockObj)
         {
-            lockObj.Counter--;
             lock (LockPool)
             {
+                lockObj.Counter--;
                 if (lockObj.Counter == 0)
                 {
                     LockPool.Remove(key);
