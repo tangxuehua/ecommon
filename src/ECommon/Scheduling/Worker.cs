@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
-using ECommon.Utilities;
 
 namespace ECommon.Scheduling
 {
@@ -12,10 +9,11 @@ namespace ECommon.Scheduling
     /// </summary>
     public class Worker
     {
+        private readonly object _lockObject = new object();
         private readonly string _actionName;
         private readonly Action _action;
         private readonly ILogger _logger;
-        private WorkerState _currentState;
+        private Status _status;
 
         /// <summary>Returns the action name of the current worker.
         /// </summary>
@@ -32,6 +30,7 @@ namespace ECommon.Scheduling
         {
             _actionName = actionName;
             _action = action;
+            _status = Status.Initial;
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -39,38 +38,41 @@ namespace ECommon.Scheduling
         /// </summary>
         public Worker Start()
         {
-            if (_currentState != null && !_currentState.StopRequested) return this;
-
-            var thread = new Thread(Loop)
+            lock (_lockObject)
             {
-                Name = string.Format("{0}.Worker", _actionName),
-                IsBackground = true
-            };
-            var state = new WorkerState();
+                if (_status == Status.Running) return this;
 
-            thread.Start(state);
+                _status = Status.Running;
+                new Thread(Loop)
+                {
+                    Name = string.Format("{0}.Worker", _actionName),
+                    IsBackground = true
+                }.Start(this);
+                _logger.InfoFormat("Worker thread started, actionName:{0}", _actionName);
 
-            _currentState = state;
-            _logger.DebugFormat("Worker started, actionName:{0}, id:{1}, managedThreadId:{2}, nativeThreadId:{3}", _actionName, state.Id, thread.ManagedThreadId, GetNativeThreadId(thread));
-
-            return this;
+                return this;
+            }
         }
         /// <summary>Request to stop the worker.
         /// </summary>
         public Worker Stop()
         {
-            if (_currentState == null) return this;
+            lock (_lockObject)
+            {
+                if (_status == Status.StopRequested) return this;
 
-            _currentState.StopRequested = true;
-            _logger.DebugFormat("Worker stop requested, actionName:{0}, id:{1}", _actionName, _currentState.Id);
-            return this;
+                _status = Status.StopRequested;
+                _logger.InfoFormat("Worker thread stop requested, actionName:{0}", _actionName);
+
+                return this;
+            }
         }
 
         private void Loop(object data)
         {
-            var state = (WorkerState)data;
+            var worker = (Worker)data;
 
-            while (!state.StopRequested)
+            while (worker._status == Status.Running)
             {
                 try
                 {
@@ -78,28 +80,22 @@ namespace ECommon.Scheduling
                 }
                 catch (ThreadAbortException)
                 {
-                    _logger.InfoFormat("caught ThreadAbortException, try to resetting, actionName:{0}", _actionName);
+                    _logger.InfoFormat("Worker thread caught ThreadAbortException, try to resetting, actionName:{0}", _actionName);
                     Thread.ResetAbort();
-                    _logger.InfoFormat("ThreadAbortException resetted, actionName:{0}", _actionName);
+                    _logger.InfoFormat("Worker thread ThreadAbortException resetted, actionName:{0}", _actionName);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Worker action has exception, actionName:{0}", _actionName), ex);
+                    _logger.Error(string.Format("Worker thread has exception, actionName:{0}", _actionName), ex);
                 }
             }
         }
-        private static int GetNativeThreadId(Thread thread)
-        {
-            var f = typeof(Thread).GetField("DONT_USE_InternalThread", BindingFlags.GetField | BindingFlags.NonPublic | BindingFlags.Instance);
-            var pInternalThread = (IntPtr)f.GetValue(thread);
-            var nativeId = Marshal.ReadInt32(pInternalThread, (IntPtr.Size == 8) ? 548 : 348); // found by analyzing the memory
-            return nativeId;
-        }
 
-        class WorkerState
+        enum Status
         {
-            public string Id = ObjectId.GenerateNewStringId();
-            public bool StopRequested;
+            Initial,
+            Running,
+            StopRequested
         }
     }
 }
