@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using ECommon.Logging;
 
@@ -7,88 +7,67 @@ namespace ECommon.Scheduling
 {
     public class ScheduleService : IScheduleService
     {
-        private readonly ConcurrentDictionary<int, TimerBasedTask> _taskDict = new ConcurrentDictionary<int, TimerBasedTask>();
+        private readonly object _lockObject = new object();
+        private readonly Dictionary<string, TimerBasedTask> _taskDict = new Dictionary<string, TimerBasedTask>();
         private readonly ILogger _logger;
-        private int _maxTaskId;
 
         public ScheduleService(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.Create(GetType().FullName);
         }
 
-        public int ScheduleTask(string actionName, Action action, int dueTime, int period)
+        public void StartTask(string name, Action action, int dueTime, int period)
         {
-            var newTaskId = Interlocked.Increment(ref _maxTaskId);
-            var timer = new Timer((obj) =>
+            lock (_lockObject)
             {
-                var currentTaskId = (int)obj;
-                TimerBasedTask currentTask;
-                if (_taskDict.TryGetValue(currentTaskId, out currentTask))
-                {
-                    if (currentTask.Stoped)
-                    {
-                        return;
-                    }
-
-                    try
-                    {
-                        currentTask.Timer.Change(Timeout.Infinite, Timeout.Infinite);
-                        if (currentTask.Stoped)
-                        {
-                            return;
-                        }
-                        currentTask.Action();
-                    }
-                    catch (ObjectDisposedException) { }
-                    catch (Exception ex)
-                    {
-                        _logger.Error(string.Format("Task has exception, actionName:{0}, dueTime:{1}, period:{2}", currentTask.ActionName, currentTask.DueTime, currentTask.Period), ex);
-                    }
-                    finally
-                    {
-                        if (!currentTask.Stoped)
-                        {
-                            try
-                            {
-                                currentTask.Timer.Change(currentTask.Period, currentTask.Period);
-                            }
-                            catch (ObjectDisposedException) { }
-                        }
-                    }
-                }
-            }, newTaskId, Timeout.Infinite, Timeout.Infinite);
-
-            if (!_taskDict.TryAdd(newTaskId, new TimerBasedTask { ActionName = actionName, Action = action, Timer = timer, DueTime = dueTime, Period = period, Stoped = false }))
-            {
-                _logger.ErrorFormat("Schedule task failed, actionName:{0}, dueTime:{1}, period:{2}", actionName, dueTime, period);
-                return -1;
+                if (_taskDict.ContainsKey(name)) return;
+                var timer = new Timer(TaskCallback, name, Timeout.Infinite, Timeout.Infinite);
+                _taskDict.Add(name, new TimerBasedTask { Name = name, Action = action, Timer = timer, DueTime = dueTime, Period = period });
+                timer.Change(dueTime, period);
+                _logger.InfoFormat("Task started, name:{0}, due:{1}, period:{2}", name, dueTime, period);
             }
-
-            timer.Change(dueTime, period);
-            _logger.DebugFormat("Schedule task success, actionName:{0}, dueTime:{1}, period:{2}", actionName, dueTime, period);
-
-            return newTaskId;
         }
-        public void ShutdownTask(int taskId)
+        public void StopTask(string name)
         {
-            TimerBasedTask task;
-            if (_taskDict.TryRemove(taskId, out task))
+            lock (_lockObject)
             {
-                task.Stoped = true;
-                task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
-                task.Timer.Dispose();
-                _logger.DebugFormat("Shutdown task success, actionName:{0}, dueTime:{1}, period:{2}", task.ActionName, task.DueTime, task.Period);
+                if (_taskDict.Remove(name))
+                {
+                    _logger.InfoFormat("Task stopped, name:{0}", name);
+                }
+            }
+        }
+
+        private void TaskCallback(object obj)
+        {
+            var taskName = (string)obj;
+            TimerBasedTask task;
+
+            if (_taskDict.TryGetValue(taskName, out task))
+            {
+                try
+                {
+                    task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
+                    task.Action();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(string.Format("Task has exception, name:{0}, due:{1}, period:{2}", task.Name, task.DueTime, task.Period), ex);
+                }
+                finally
+                {
+                    try { task.Timer.Change(task.Period, task.Period); } catch { }
+                }
             }
         }
 
         class TimerBasedTask
         {
-            public string ActionName;
+            public string Name;
             public Action Action;
             public Timer Timer;
             public int DueTime;
             public int Period;
-            public bool Stoped;
         }
     }
 }

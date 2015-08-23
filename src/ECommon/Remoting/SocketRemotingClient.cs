@@ -18,11 +18,6 @@ namespace ECommon.Remoting
     public class SocketRemotingClient
     {
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
-        private EndPoint _serverEndPoint;
-        private EndPoint _localEndPoint;
-        private ClientSocket _clientSocket;
-        private readonly object _lockObject1;
-        private readonly object _lockObject2;
         private readonly Dictionary<int, IResponseHandler> _responseHandlerDict;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
@@ -30,15 +25,20 @@ namespace ECommon.Remoting
         private readonly IScheduleService _scheduleService;
         private readonly ILogger _logger;
         private readonly Worker _worker;
-        private int _scanTimeoutRequestTaskId;
-        private int _reconnectServerTaskId;
+
+        private EndPoint _serverEndPoint;
+        private EndPoint _localEndPoint;
+        private ClientSocket _clientSocket;
         private int _reconnecting = 0;
+
+        public bool IsConnected
+        {
+            get { return _clientSocket.IsConnected; }
+        }
 
         public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
         public SocketRemotingClient(EndPoint serverEndPoint, EndPoint localEndPoint = null)
         {
-            _lockObject1 = new object();
-            _lockObject2 = new object();
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
             _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, ReceiveReplyMessage);
@@ -234,45 +234,19 @@ namespace ECommon.Remoting
         }
         private void StartScanTimeoutRequestTask()
         {
-            lock (_lockObject1)
-            {
-                if (_scanTimeoutRequestTaskId == 0)
-                {
-                    _scanTimeoutRequestTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
-                }
-            }
+            _scheduleService.StartTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
         }
         private void StopScanTimeoutRequestTask()
         {
-            lock (_lockObject1)
-            {
-                if (_scanTimeoutRequestTaskId > 0)
-                {
-                    _scheduleService.ShutdownTask(_scanTimeoutRequestTaskId);
-                    _scanTimeoutRequestTaskId = 0;
-                }
-            }
+            _scheduleService.StopTask("SocketRemotingClient.ScanTimeoutRequest");
         }
         private void StartReconnectServerTask()
         {
-            lock (_lockObject2)
-            {
-                if (_reconnectServerTaskId == 0)
-                {
-                    _reconnectServerTaskId = _scheduleService.ScheduleTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
-                }
-            }
+            _scheduleService.StartTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
         }
         private void StopReconnectServerTask()
         {
-            lock (_lockObject2)
-            {
-                if (_reconnectServerTaskId > 0)
-                {
-                    _scheduleService.ShutdownTask(_reconnectServerTaskId);
-                    _reconnectServerTaskId = 0;
-                }
-            }
+            _scheduleService.StopTask("SocketRemotingClient.ReconnectServer");
         }
         private void EnsureClientStatus()
         {
