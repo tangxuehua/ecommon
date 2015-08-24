@@ -152,6 +152,10 @@ namespace ECommon.Remoting
                 {
                     responseHandler.HandleResponse(remotingResponse);
                 }
+                else
+                {
+                    _logger.ErrorFormat("No response handler found for remoting response:{0}", remotingResponse);
+                }
             }
             else if (remotingResponse.Type == RemotingRequestType.Async)
             {
