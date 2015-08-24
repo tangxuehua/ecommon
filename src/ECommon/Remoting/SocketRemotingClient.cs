@@ -12,11 +12,13 @@ using ECommon.Logging;
 using ECommon.Remoting.Exceptions;
 using ECommon.Scheduling;
 using ECommon.Socketing;
+using ECommon.Utilities;
 
 namespace ECommon.Remoting
 {
     public class SocketRemotingClient
     {
+        private readonly string _id;
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
         private readonly Dictionary<int, IResponseHandler> _responseHandlerDict;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
@@ -36,9 +38,13 @@ namespace ECommon.Remoting
             get { return _clientSocket.IsConnected; }
         }
 
-        public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
-        public SocketRemotingClient(EndPoint serverEndPoint, EndPoint localEndPoint = null)
+        public SocketRemotingClient(string id) : this(id, new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingClient(string id, EndPoint serverEndPoint, EndPoint localEndPoint = null)
         {
+            Ensure.NotNull(id, "id");
+            Ensure.NotNull(serverEndPoint, "serverEndPoint");
+
+            _id = id;
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
             _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, ReceiveReplyMessage);
@@ -47,7 +53,7 @@ namespace ECommon.Remoting
             _responseHandlerDict = new Dictionary<int, IResponseHandler>();
             _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _worker = new Worker("SocketRemotingClient.HandleReplyMessage", HandleReplyMessage);
+            _worker = new Worker(string.Format("{0}.HandleReplyMessage", _id), HandleReplyMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
 
             RegisterConnectionEventListener(new ConnectionEventListener(this));
@@ -238,19 +244,19 @@ namespace ECommon.Remoting
         }
         private void StartScanTimeoutRequestTask()
         {
-            _scheduleService.StartTask("SocketRemotingClient.ScanTimeoutRequest", ScanTimeoutRequest, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ScanTimeoutRequest", _id), ScanTimeoutRequest, 1000, 1000);
         }
         private void StopScanTimeoutRequestTask()
         {
-            _scheduleService.StopTask("SocketRemotingClient.ScanTimeoutRequest");
+            _scheduleService.StopTask(string.Format("{0}.ScanTimeoutRequest", _id));
         }
         private void StartReconnectServerTask()
         {
-            _scheduleService.StartTask("SocketRemotingClient.ReconnectServer", ReconnectServer, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", _id), ReconnectServer, 1000, 1000);
         }
         private void StopReconnectServerTask()
         {
-            _scheduleService.StopTask("SocketRemotingClient.ReconnectServer");
+            _scheduleService.StopTask(string.Format("{0}.ReconnectServer", _id));
         }
         private void EnsureClientStatus()
         {

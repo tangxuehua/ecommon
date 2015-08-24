@@ -31,8 +31,10 @@ namespace ECommon.Scheduling
         {
             lock (_lockObject)
             {
-                if (_taskDict.Remove(name))
+                if (_taskDict.ContainsKey(name))
                 {
+                    _taskDict[name].Timer.Dispose();
+                    _taskDict.Remove(name);
                     _logger.InfoFormat("Task stopped, name:{0}", name);
                 }
             }
@@ -50,6 +52,7 @@ namespace ECommon.Scheduling
                     task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
                     task.Action();
                 }
+                catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
                     _logger.Error(string.Format("Task has exception, name:{0}, due:{1}, period:{2}", task.Name, task.DueTime, task.Period), ex);
