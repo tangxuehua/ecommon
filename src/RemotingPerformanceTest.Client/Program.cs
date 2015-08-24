@@ -45,9 +45,9 @@ namespace RemotingPerformanceTest.Client
             var message = new byte[messageSize];
             var actions = new List<Action>();
 
-            for (var i = 0; i < parallelThreadCount; i++)
+            for (var i = 1; i <= parallelThreadCount; i++)
             {
-                var client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000));
+                var client = new SocketRemotingClient("Client" + i.ToString(), new IPEndPoint(serverAddress, 5000));
                 client.Start();
                 actions.Add(() => SendMessages(client, mode, messageCount, sleepMilliseconds, batchSize, message));
             }
