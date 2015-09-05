@@ -13,6 +13,7 @@ namespace ECommon.Remoting
         private readonly ServerSocket _serverSocket;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
         private readonly ILogger _logger;
+        private bool _isShuttingdown = false;
 
         public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
         public SocketRemotingServer(string name, IPEndPoint listeningEndPoint)
@@ -29,11 +30,13 @@ namespace ECommon.Remoting
         }
         public SocketRemotingServer Start()
         {
+            _isShuttingdown = false;
             _serverSocket.Start();
             return this;
         }
         public SocketRemotingServer Shutdown()
         {
+            _isShuttingdown = true;
             _serverSocket.Shutdown();
             return this;
         }
@@ -45,6 +48,8 @@ namespace ECommon.Remoting
 
         private void HandleRemotingRequest(ITcpConnection connection, byte[] message, Action<byte[]> sendReplyAction)
         {
+            if (_isShuttingdown) return;
+
             var remotingRequest = RemotingUtil.ParseRequest(message);
             var requestHandlerContext = new SocketRequestHandlerContext(connection, sendReplyAction);
 

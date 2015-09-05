@@ -41,7 +41,7 @@ namespace ECommon.Socketing
         }
         public void Start()
         {
-            _logger.InfoFormat("Starting listening on TCP endpoint: {0}.", _listeningEndPoint);
+            _logger.InfoFormat("Socket server is starting, listening on TCP endpoint: {0}.", _listeningEndPoint);
 
             try
             {
@@ -60,6 +60,7 @@ namespace ECommon.Socketing
         public void Shutdown()
         {
             SocketUtils.ShutdownSocket(_socket);
+            _logger.InfoFormat("Socket server shutdown, listening TCP endpoint: {0}.", _listeningEndPoint);
         }
 
         private void StartAccepting()
