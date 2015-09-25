@@ -99,20 +99,28 @@ namespace ECommon.Socketing
 
         private void OnSocketAccepted(Socket socket)
         {
-            var connection = new TcpConnection(socket, OnMessageArrived, OnConnectionClosed);
-
-            _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
-
-            foreach (var listener in _connectionEventListeners)
+            try
             {
-                try
+                var connection = new TcpConnection(socket, OnMessageArrived, OnConnectionClosed);
+
+                _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
+
+                foreach (var listener in _connectionEventListeners)
                 {
-                    listener.OnConnectionAccepted(connection);
+                    try
+                    {
+                        listener.OnConnectionAccepted(connection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
-                }
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex)
+            {
+                _logger.Info("Accept socket client has unknown exception.", ex);
             }
         }
         private void OnMessageArrived(ITcpConnection connection, byte[] message)
