@@ -78,11 +78,12 @@
     <Compile Include="Components\ObjectContainer.cs" />
     <Compile Include="Logging\ILogger.cs" />
     <Compile Include="Logging\ILoggerFactory.cs" />
-    <Compile Include="Socketing\BufferManagement\BufferManager.cs" />
+    <Compile Include="Socketing\BufferManagement\BufferItemCreator.cs" />
     <Compile Include="Socketing\BufferManagement\BufferPool.cs" />
-    <Compile Include="Socketing\BufferManagement\BufferPoolStream.cs" />
-    <Compile Include="Socketing\BufferManagement\UnableToAllocateBufferException.cs" />
-    <Compile Include="Socketing\BufferManagement\UnableToCreateMemoryException.cs" />
+    <Compile Include="Socketing\BufferManagement\IBufferPool.cs" />
+    <Compile Include="Socketing\BufferManagement\IntelliPool.cs" />
+    <Compile Include="Socketing\BufferManagement\IPool.cs" />
+    <Compile Include="Socketing\BufferManagement\IPoolItemCreator.cs" />
     <Compile Include="Socketing\IConnectionEventListener.cs" />
     <Compile Include="Socketing\ISocketServerEventListener.cs" />
     <Compile Include="Socketing\ISocketClientEventListener.cs" />

@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
+using ECommon.Socketing.BufferManagement;
 using ECommon.Utilities;
 
 namespace ECommon.Socketing
@@ -19,6 +20,7 @@ namespace ECommon.Socketing
         private TcpConnection _connection;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
+        private readonly IBufferPool _bufferPool = new BufferPool(8192, 50);
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
 
@@ -101,7 +103,7 @@ namespace ECommon.Socketing
                 return;
             }
 
-            _connection = new TcpConnection(_socket, OnMessageArrived, OnConnectionClosed);
+            _connection = new TcpConnection(_socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
 
             _logger.InfoFormat("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint);
 

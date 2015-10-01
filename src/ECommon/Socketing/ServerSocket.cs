@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using ECommon.Components;
 using ECommon.Logging;
+using ECommon.Socketing.BufferManagement;
 using ECommon.Utilities;
 
 namespace ECommon.Socketing
@@ -17,6 +18,7 @@ namespace ECommon.Socketing
         private readonly SocketAsyncEventArgs _acceptSocketArgs;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[], Action<byte[]>> _messageArrivedHandler;
+        private readonly IBufferPool _bufferPool = new BufferPool(8192, 50);
         private readonly ILogger _logger;
 
         #endregion
@@ -99,7 +101,7 @@ namespace ECommon.Socketing
 
         private void OnSocketAccepted(Socket socket)
         {
-            var connection = new TcpConnection(socket, OnMessageArrived, OnConnectionClosed);
+            var connection = new TcpConnection(socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
 
             _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
 

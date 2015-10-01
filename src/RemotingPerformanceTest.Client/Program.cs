@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -11,6 +10,7 @@ using ECommon.Components;
 using ECommon.Log4Net;
 using ECommon.Logging;
 using ECommon.Remoting;
+using ECommon.Scheduling;
 using ECommon.Socketing;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
@@ -19,11 +19,21 @@ namespace RemotingPerformanceTest.Client
     class Program
     {
         static long _sendingCount = 0;
-        static long _totalReceivedCount = 0;
+        static long _previousSentCount = 0;
+        static long _sentCount = 0;
+        static string _mode;
         static ILogger _logger;
-        static Stopwatch _watch = new Stopwatch();
+        static IScheduleService _scheduleService;
 
         static void Main(string[] args)
+        {
+            InitializeECommon();
+            StartPrintThroughputTask();
+            SendMessageTest();
+            Console.ReadLine();
+        }
+
+        static void InitializeECommon()
         {
             ECommonConfiguration
                 .Create()
@@ -33,11 +43,15 @@ namespace RemotingPerformanceTest.Client
                 .RegisterUnhandledExceptionHandler();
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
+            _scheduleService = ObjectContainer.Resolve<IScheduleService>();
+        }
+        static void SendMessageTest()
+        {
+            _mode = ConfigurationManager.AppSettings["Mode"];
 
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
-            var mode = ConfigurationManager.AppSettings["Mode"];
             var serverAddress = string.IsNullOrEmpty(serverIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(serverIP);
-            var parallelThreadCount = int.Parse(ConfigurationManager.AppSettings["ClientCount"]);
+            var clientCount = int.Parse(ConfigurationManager.AppSettings["ClientCount"]);
             var messageSize = int.Parse(ConfigurationManager.AppSettings["MessageSize"]);
             var messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
             var sleepMilliseconds = int.Parse(ConfigurationManager.AppSettings["SleepMilliseconds"]);
@@ -45,32 +59,25 @@ namespace RemotingPerformanceTest.Client
             var message = new byte[messageSize];
             var actions = new List<Action>();
 
-            for (var i = 1; i <= parallelThreadCount; i++)
+            for (var i = 1; i <= clientCount; i++)
             {
                 var client = new SocketRemotingClient("Client" + i.ToString(), new IPEndPoint(serverAddress, 5000));
                 client.Start();
-                actions.Add(() => SendMessages(client, mode, messageCount, sleepMilliseconds, batchSize, message));
+                actions.Add(() => SendMessages(client, _mode, messageCount, sleepMilliseconds, batchSize, message));
             }
 
-            _watch.Start();
             Parallel.Invoke(actions.ToArray());
-            Console.ReadLine();
         }
-
         static void SendMessages(SocketRemotingClient client, string mode, int count, int sleepMilliseconds, int batchSize, byte[] message)
         {
-            Console.WriteLine("----Send message test----");
+            _logger.Info("----Send message test----");
 
             if (mode == "Oneway")
             {
                 for (var i = 1; i <= count; i++)
                 {
                     TryAction(() => client.InvokeOneway(new RemotingRequest(100, message)));
-                    var current = Interlocked.Increment(ref _totalReceivedCount);
-                    if (current % 10000 == 0)
-                    {
-                        Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
-                    }
+                    Interlocked.Increment(ref _sentCount);
                     WaitIfNecessory(batchSize, sleepMilliseconds);
                 }
             }
@@ -96,19 +103,15 @@ namespace RemotingPerformanceTest.Client
         {
             if (task.Exception != null)
             {
-                Console.WriteLine(task.Exception);
+                _logger.Error(task.Exception);
                 return;
             }
-            if (task.Result.Code == 0)
+            if (task.Result.Code <= 0)
             {
-                Console.WriteLine(Encoding.UTF8.GetString(task.Result.Body));
+                _logger.Error(Encoding.UTF8.GetString(task.Result.Body));
                 return;
             }
-            var current = Interlocked.Increment(ref _totalReceivedCount);
-            if (current % 10000 == 0)
-            {
-                Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
-            }
+            Interlocked.Increment(ref _sentCount);
         }
         static void TryAction(Action sendRequestAction)
         {
@@ -130,6 +133,18 @@ namespace RemotingPerformanceTest.Client
                 Thread.Sleep(sleepMilliseconds);
             }
         }
+        static void StartPrintThroughputTask()
+        {
+            _scheduleService.StartTask("Program.PrintThroughput", PrintThroughput, 0, 1000);
+        }
+        static void PrintThroughput()
+        {
+            var totalSentCount = _sentCount;
+            var totalCountOfCurrentPeriod = totalSentCount - _previousSentCount;
+            _previousSentCount = totalSentCount;
+
+            _logger.InfoFormat("Send message mode: {0}, currentTime: {1}, totalSent: {2}, throughput: {3}/s", _mode, DateTime.Now.ToLongTimeString(), totalSentCount, totalCountOfCurrentPeriod);
+        }
 
         class ResponseHandler : IResponseHandler
         {
@@ -137,14 +152,10 @@ namespace RemotingPerformanceTest.Client
             {
                 if (remotingResponse.Code <= 0)
                 {
-                    Console.WriteLine(Encoding.UTF8.GetString(remotingResponse.Body));
+                    _logger.Error(Encoding.UTF8.GetString(remotingResponse.Body));
                     return;
                 }
-                var current = Interlocked.Increment(ref _totalReceivedCount);
-                if (current % 10000 == 0)
-                {
-                    Console.WriteLine("Sent {0} messages, timeSpent: {1}ms", current, _watch.ElapsedMilliseconds);
-                }
+                Interlocked.Increment(ref _sentCount);
             }
         }
     }

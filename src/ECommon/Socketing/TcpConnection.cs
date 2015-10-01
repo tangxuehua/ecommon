@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using ECommon.Components;
 using ECommon.Logging;
+using ECommon.Scheduling;
 using ECommon.Socketing.BufferManagement;
 using ECommon.Socketing.Framing;
 using ECommon.Utilities;
@@ -29,14 +30,14 @@ namespace ECommon.Socketing
         private readonly Socket _socket;
         private readonly EndPoint _localEndPoint;
         private readonly EndPoint _remotingEndPoint;
-        private readonly SocketAsyncEventArgs _sendSocketArgs;
+        private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
+        private readonly IBufferPool _bufferPool;
         private readonly IMessageFramer _framer;
         private readonly ILogger _logger;
         private readonly ConcurrentQueue<ArraySegment<byte>> _sendingQueue = new ConcurrentQueue<ArraySegment<byte>>();
         private readonly ConcurrentQueue<ReceivedData> _receiveQueue = new ConcurrentQueue<ReceivedData>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
-        private readonly BufferManager _bufferManager = new BufferManager(512, 8 * 1024);
         private readonly object _sendingLock = new object();
         private readonly object _receivingLock = new object();
 
@@ -66,21 +67,30 @@ namespace ECommon.Socketing
             get { return _remotingEndPoint; }
         }
 
-        public TcpConnection(Socket socket, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
+        private IScheduleService _scheduleService = ObjectContainer.Resolve<IScheduleService>();
+
+        public TcpConnection(Socket socket, IBufferPool bufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
         {
             Ensure.NotNull(socket, "socket");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
             Ensure.NotNull(connectionClosedHandler, "connectionClosedHandler");
 
             _socket = socket;
+            _bufferPool = bufferPool;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
             _messageArrivedHandler = messageArrivedHandler;
             _connectionClosedHandler = connectionClosedHandler;
 
-            _sendSocketArgs = new SocketAsyncEventArgs();
-            _sendSocketArgs.AcceptSocket = socket;
-            _sendSocketArgs.Completed += OnSendAsyncCompleted;
+            _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
+
+            for (var i = 0; i < 5; i++)
+            {
+                var sendSocketArgs = new SocketAsyncEventArgs();
+                sendSocketArgs.AcceptSocket = socket;
+                sendSocketArgs.Completed += OnSendAsyncCompleted;
+                _sendSocketArgsStack.Push(sendSocketArgs);
+            }
 
             _receiveSocketArgs = new SocketAsyncEventArgs();
             _receiveSocketArgs.AcceptSocket = socket;
@@ -90,6 +100,11 @@ namespace ECommon.Socketing
 
             _framer = new LengthPrefixMessageFramer();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
+
+            _scheduleService.StartTask("PrintStreamBufferLength", () =>
+            {
+                _logger.InfoFormat("_sendingCount: {0}, _sentCount: {1}", _sendingCount, _sentCount);
+            }, 1000, 1000);
 
             TryReceive();
             TrySend();
@@ -111,15 +126,15 @@ namespace ECommon.Socketing
         {
             if (!EnterReceiving()) return;
 
-            var buffer = _bufferManager.CheckOut();
-            if (buffer.Array == null || buffer.Count == 0 || buffer.Array.Length < buffer.Offset + buffer.Count)
+            var buffer = _bufferPool.Get();
+            if (buffer == null)
             {
                 CloseInternal(SocketError.Shutdown, "Socket receive allocate buffer failed.");
                 ExitReceiving();
                 return;
             }
 
-            _receiveSocketArgs.SetBuffer(buffer.Array, buffer.Offset, buffer.Count);
+            _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
             if (_receiveSocketArgs.Buffer == null)
             {
                 CloseInternal(SocketError.Shutdown, "Socket receive set buffer failed.");
@@ -147,6 +162,7 @@ namespace ECommon.Socketing
             CloseInternal(SocketError.Success, "Socket normal close.");
         }
 
+        private long _sendingCount;
         private void TrySend()
         {
             if (!EnterSending()) return;
@@ -175,11 +191,19 @@ namespace ECommon.Socketing
 
             try
             {
-                _sendSocketArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
-                var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
+                var sendSocktArgs = GetSendSocketEventArgs();
+                sendSocktArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
+                var firedAsync = sendSocktArgs.AcceptSocket.SendAsync(sendSocktArgs);
+                Interlocked.Increment(ref _sendingCount);
+                var c = Interlocked.Increment(ref _sendingCount);
+                if (c % 1000 == 0)
+                {
+                    GC.Collect();
+                }
+
                 if (!firedAsync)
                 {
-                    ProcessSend(_sendSocketArgs);
+                    ProcessSend(sendSocktArgs);
                 }
             }
             catch (Exception ex)
@@ -192,8 +216,16 @@ namespace ECommon.Socketing
         {
             ProcessSend(e);
         }
+        
+
+        private long _sentCount;
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
+            if (socketArgs.Buffer != null)
+            {
+                socketArgs.SetBuffer(null, 0, 0);
+            }
+            ReturnSendSocketEventArgs(socketArgs);
             ExitSending();
 
             if (socketArgs.SocketError == SocketError.Success)
@@ -251,7 +283,7 @@ namespace ECommon.Socketing
 
                 for (int i = 0, n = dataList.Count; i < n; ++i)
                 {
-                    _bufferManager.CheckIn(dataList[i].Buf);
+                    _bufferPool.Return(dataList[i].Buf.Array);
                 }
             }
             catch (Exception ex)
@@ -282,7 +314,7 @@ namespace ECommon.Socketing
             {
                 if (_receiveSocketArgs.Buffer != null)
                 {
-                    _bufferManager.CheckIn(new ArraySegment<byte>(_receiveSocketArgs.Buffer, _receiveSocketArgs.Offset, _receiveSocketArgs.Count));
+                    _bufferPool.Return(_receiveSocketArgs.Buffer);
                     _receiveSocketArgs.SetBuffer(null, 0, 0);
                 }
             }
@@ -310,6 +342,25 @@ namespace ECommon.Socketing
             }
         }
 
+        private SocketAsyncEventArgs GetSendSocketEventArgs()
+        {
+            SocketAsyncEventArgs args;
+            if (_sendSocketArgsStack.TryPop(out args))
+            {
+                return args;
+            }
+
+            var spinWait = new SpinWait();
+            while (!_sendSocketArgsStack.TryPop(out args))
+            {
+                spinWait.SpinOnce();
+            }
+            return args;
+        }
+        private void ReturnSendSocketEventArgs(SocketAsyncEventArgs args)
+        {
+            _sendSocketArgsStack.Push(args);
+        }
         private bool EnterSending()
         {
             return Interlocked.CompareExchange(ref _sending, 1, 0) == 0;
