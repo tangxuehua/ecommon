@@ -78,7 +78,14 @@ namespace RemotingPerformanceTest.Client
                 {
                     TryAction(() => client.InvokeOneway(new RemotingRequest(100, message)));
                     Interlocked.Increment(ref _sentCount);
-                    WaitIfNecessory(batchSize, sleepMilliseconds);
+                }
+            }
+            else if (mode == "Sync")
+            {
+                for (var i = 1; i <= count; i++)
+                {
+                    TryAction(() => client.InvokeSync(new RemotingRequest(100, message), 5000));
+                    Interlocked.Increment(ref _sentCount);
                 }
             }
             else if (mode == "Async")
@@ -86,7 +93,6 @@ namespace RemotingPerformanceTest.Client
                 for (var i = 1; i <= count; i++)
                 {
                     TryAction(() => client.InvokeAsync(new RemotingRequest(100, message), 100000).ContinueWith(SendCallback));
-                    WaitIfNecessory(batchSize, sleepMilliseconds);
                 }
             }
             else if (mode == "Callback")
@@ -95,7 +101,6 @@ namespace RemotingPerformanceTest.Client
                 for (var i = 1; i <= count; i++)
                 {
                     TryAction(() => client.InvokeWithCallback(new RemotingRequest(100, message)));
-                    WaitIfNecessory(batchSize, sleepMilliseconds);
                 }
             }
         }
@@ -123,14 +128,6 @@ namespace RemotingPerformanceTest.Client
             {
                 _logger.ErrorFormat("Send remoting request failed, errorMsg:{0}", ex.Message);
                 Thread.Sleep(5000);
-            }
-        }
-        static void WaitIfNecessory(int batchSize, int sleepMilliseconds)
-        {
-            var current = Interlocked.Increment(ref _sendingCount);
-            if (current % batchSize == 0)
-            {
-                Thread.Sleep(sleepMilliseconds);
             }
         }
         static void StartPrintThroughputTask()

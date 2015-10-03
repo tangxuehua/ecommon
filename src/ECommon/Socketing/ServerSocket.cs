@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using ECommon.Components;
 using ECommon.Logging;
+using ECommon.Socketing.BufferManagement;
 using ECommon.Utilities;
 
 namespace ECommon.Socketing
@@ -17,6 +19,7 @@ namespace ECommon.Socketing
         private readonly SocketAsyncEventArgs _acceptSocketArgs;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[], Action<byte[]>> _messageArrivedHandler;
+        private readonly IBufferPool _bufferPool;
         private readonly ILogger _logger;
 
         #endregion
@@ -32,6 +35,7 @@ namespace ECommon.Socketing
             _socket = SocketUtils.CreateSocket();
             _acceptSocketArgs = new SocketAsyncEventArgs();
             _acceptSocketArgs.Completed += AcceptCompleted;
+            _bufferPool = new BufferPool(8192, 50);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -99,40 +103,46 @@ namespace ECommon.Socketing
 
         private void OnSocketAccepted(Socket socket)
         {
-            try
+            Task.Factory.StartNew(() =>
             {
-                var connection = new TcpConnection(socket, OnMessageArrived, OnConnectionClosed);
-
-                _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
-
-                foreach (var listener in _connectionEventListeners)
+                try
                 {
-                    try
+                    var connection = new TcpConnection(socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
+
+                    _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
+
+                    foreach (var listener in _connectionEventListeners)
                     {
-                        listener.OnConnectionAccepted(connection);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
+                        try
+                        {
+                            listener.OnConnectionAccepted(connection);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
+                        }
                     }
                 }
-            }
-            catch (ObjectDisposedException) { }
-            catch (Exception ex)
-            {
-                _logger.Info("Accept socket client has unknown exception.", ex);
-            }
+                catch (ObjectDisposedException) { }
+                catch (Exception ex)
+                {
+                    _logger.Info("Accept socket client has unknown exception.", ex);
+                }
+            });
         }
         private void OnMessageArrived(ITcpConnection connection, byte[] message)
         {
-            try
+            Task.Factory.StartNew(() =>
             {
-                _messageArrivedHandler(connection, message, reply => connection.Send(reply));
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Handle message error.", ex);
-            }
+                try
+                {
+                    _messageArrivedHandler(connection, message, reply => connection.Send(reply));
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Handle message error.", ex);
+                }
+            });
         }
         private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
         {

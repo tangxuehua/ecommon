@@ -12,6 +12,7 @@ using ECommon.Logging;
 using ECommon.Remoting.Exceptions;
 using ECommon.Scheduling;
 using ECommon.Socketing;
+using ECommon.Socketing.BufferManagement;
 using ECommon.Utilities;
 
 namespace ECommon.Remoting
@@ -25,6 +26,7 @@ namespace ECommon.Remoting
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _replyMessageQueue;
         private readonly IScheduleService _scheduleService;
+        private readonly IBufferPool _bufferPool;
         private readonly ILogger _logger;
         private readonly Worker _worker;
 
@@ -47,7 +49,8 @@ namespace ECommon.Remoting
             _id = id;
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
-            _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, ReceiveReplyMessage);
+            _bufferPool = new BufferPool(8192, 50);
+            _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, _bufferPool, ReceiveReplyMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _responseHandlerDict = new Dictionary<int, IResponseHandler>();
@@ -209,7 +212,7 @@ namespace ECommon.Remoting
             try
             {
                 _clientSocket.Shutdown();
-                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, ReceiveReplyMessage);
+                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _bufferPool, ReceiveReplyMessage);
                 foreach (var listener in _connectionEventListeners)
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);

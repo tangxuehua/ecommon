@@ -20,7 +20,7 @@ namespace ECommon.Socketing
         private TcpConnection _connection;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
-        private readonly IBufferPool _bufferPool = new BufferPool(8192, 50);
+        private readonly IBufferPool _bufferPool;
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
 
@@ -35,7 +35,7 @@ namespace ECommon.Socketing
             get { return _socket; }
         }
 
-        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, Action<ITcpConnection, byte[]> messageArrivedHandler)
+        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, IBufferPool bufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
@@ -44,6 +44,7 @@ namespace ECommon.Socketing
 
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
+            _bufferPool = bufferPool;
             _messageArrivedHandler = messageArrivedHandler;
             _waitConnectHandle = new ManualResetEvent(false);
             _socket = SocketUtils.CreateSocket();

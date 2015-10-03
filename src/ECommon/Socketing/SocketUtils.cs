@@ -14,8 +14,8 @@ namespace ECommon.Socketing
         public static Socket CreateSocket()
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.ReceiveBufferSize = 8192;
             socket.NoDelay = true;
+            socket.Blocking = false;
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             return socket;
         }

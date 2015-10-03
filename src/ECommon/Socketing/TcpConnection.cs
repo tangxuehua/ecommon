@@ -40,6 +40,7 @@ namespace ECommon.Socketing
         private readonly MemoryStream _sendingStream = new MemoryStream();
         private readonly object _sendingLock = new object();
         private readonly object _receivingLock = new object();
+        private readonly IScheduleService _scheduleService;
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
         private Action<ITcpConnection, byte[]> _messageArrivedHandler;
@@ -47,6 +48,9 @@ namespace ECommon.Socketing
         private int _sending;
         private int _receiving;
         private int _parsing;
+
+        private long _segmentCount;
+        private long _flowControlCount;
 
         #endregion
 
@@ -67,8 +71,6 @@ namespace ECommon.Socketing
             get { return _remotingEndPoint; }
         }
 
-        private IScheduleService _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-
         public TcpConnection(Socket socket, IBufferPool bufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
         {
             Ensure.NotNull(socket, "socket");
@@ -84,7 +86,9 @@ namespace ECommon.Socketing
 
             _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
 
-            for (var i = 0; i < 5; i++)
+            _scheduleService = ObjectContainer.Resolve<IScheduleService>();
+
+            for (var i = 0; i < 2; i++)
             {
                 var sendSocketArgs = new SocketAsyncEventArgs();
                 sendSocketArgs.AcceptSocket = socket;
@@ -101,11 +105,6 @@ namespace ECommon.Socketing
             _framer = new LengthPrefixMessageFramer();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
 
-            _scheduleService.StartTask("PrintStreamBufferLength", () =>
-            {
-                _logger.InfoFormat("_sendingCount: {0}, _sentCount: {1}", _sendingCount, _sentCount);
-            }, 1000, 1000);
-
             TryReceive();
             TrySend();
         }
@@ -118,9 +117,20 @@ namespace ECommon.Socketing
                 foreach (var segment in segments)
                 {
                     _sendingQueue.Enqueue(segment);
+                    Interlocked.Increment(ref _segmentCount);
                 }
             }
             TrySend();
+
+            if (_segmentCount >= 50000)
+            {
+                Thread.Sleep(5);
+                var count = Interlocked.Increment(ref _flowControlCount);
+                if (count % 1000 == 0)
+                {
+                    _logger.InfoFormat("Send message flow control count: {0}", count);
+                }
+            }
         }
         public void TryReceive()
         {
@@ -162,7 +172,6 @@ namespace ECommon.Socketing
             CloseInternal(SocketError.Success, "Socket normal close.");
         }
 
-        private long _sendingCount;
         private void TrySend()
         {
             if (!EnterSending()) return;
@@ -172,6 +181,7 @@ namespace ECommon.Socketing
             ArraySegment<byte> sendPiece;
             while (_sendingQueue.TryDequeue(out sendPiece))
             {
+                Interlocked.Decrement(ref _segmentCount);
                 _sendingStream.Write(sendPiece.Array, sendPiece.Offset, sendPiece.Count);
                 if (_sendingStream.Length >= MaxSendPacketSize)
                 {
@@ -194,13 +204,6 @@ namespace ECommon.Socketing
                 var sendSocktArgs = GetSendSocketEventArgs();
                 sendSocktArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
                 var firedAsync = sendSocktArgs.AcceptSocket.SendAsync(sendSocktArgs);
-                Interlocked.Increment(ref _sendingCount);
-                var c = Interlocked.Increment(ref _sendingCount);
-                if (c % 1000 == 0)
-                {
-                    GC.Collect();
-                }
-
                 if (!firedAsync)
                 {
                     ProcessSend(sendSocktArgs);
@@ -216,9 +219,6 @@ namespace ECommon.Socketing
         {
             ProcessSend(e);
         }
-        
-
-        private long _sentCount;
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
             if (socketArgs.Buffer != null)

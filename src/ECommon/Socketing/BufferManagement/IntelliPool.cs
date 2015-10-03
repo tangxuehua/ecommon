@@ -41,7 +41,6 @@ namespace ECommon.Socketing.BufferManagement
             PoolItemState state = new PoolItemState();
             state.Generation = CurrentGeneration;
             _bufferDict.TryAdd(item, state);
-            Console.WriteLine("Register new item.");
         }
 
         /// <summary>
