@@ -25,14 +25,13 @@ namespace ECommon.Socketing
     {
         #region Private Variables
 
-        private const int MaxSendPacketSize = 64 * 1024;
-
         private readonly Socket _socket;
+        private readonly SocketSetting _setting;
         private readonly EndPoint _localEndPoint;
         private readonly EndPoint _remotingEndPoint;
         private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
-        private readonly IBufferPool _bufferPool;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly IMessageFramer _framer;
         private readonly ILogger _logger;
         private readonly ConcurrentQueue<ArraySegment<byte>> _sendingQueue = new ConcurrentQueue<ArraySegment<byte>>();
@@ -40,7 +39,6 @@ namespace ECommon.Socketing
         private readonly MemoryStream _sendingStream = new MemoryStream();
         private readonly object _sendingLock = new object();
         private readonly object _receivingLock = new object();
-        private readonly IScheduleService _scheduleService;
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
         private Action<ITcpConnection, byte[]> _messageArrivedHandler;
@@ -50,7 +48,7 @@ namespace ECommon.Socketing
         private int _parsing;
 
         private long _segmentCount;
-        private long _flowControlCount;
+        private long _flowControlTimes;
 
         #endregion
 
@@ -71,22 +69,23 @@ namespace ECommon.Socketing
             get { return _remotingEndPoint; }
         }
 
-        public TcpConnection(Socket socket, IBufferPool bufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
+        public TcpConnection(Socket socket, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
         {
             Ensure.NotNull(socket, "socket");
+            Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
             Ensure.NotNull(connectionClosedHandler, "connectionClosedHandler");
 
             _socket = socket;
-            _bufferPool = bufferPool;
+            _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
             _messageArrivedHandler = messageArrivedHandler;
             _connectionClosedHandler = connectionClosedHandler;
 
             _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
-
-            _scheduleService = ObjectContainer.Resolve<IScheduleService>();
 
             for (var i = 0; i < 2; i++)
             {
@@ -122,13 +121,13 @@ namespace ECommon.Socketing
             }
             TrySend();
 
-            if (_segmentCount >= 50000)
+            if (_segmentCount >= _setting.SendMessageFlowControlCount)
             {
-                Thread.Sleep(5);
-                var count = Interlocked.Increment(ref _flowControlCount);
-                if (count % 1000 == 0)
+                Thread.Sleep(_setting.SendMessageFlowControlWaitMilliseconds);
+                var times = Interlocked.Increment(ref _flowControlTimes);
+                if (times % 1000 == 0)
                 {
-                    _logger.InfoFormat("Send message flow control count: {0}", count);
+                    _logger.InfoFormat("Send message flow control times: {0}", times);
                 }
             }
         }
@@ -136,7 +135,7 @@ namespace ECommon.Socketing
         {
             if (!EnterReceiving()) return;
 
-            var buffer = _bufferPool.Get();
+            var buffer = _receiveDataBufferPool.Get();
             if (buffer == null)
             {
                 CloseInternal(SocketError.Shutdown, "Socket receive allocate buffer failed.");
@@ -183,7 +182,7 @@ namespace ECommon.Socketing
             {
                 Interlocked.Decrement(ref _segmentCount);
                 _sendingStream.Write(sendPiece.Array, sendPiece.Offset, sendPiece.Count);
-                if (_sendingStream.Length >= MaxSendPacketSize)
+                if (_sendingStream.Length >= _setting.MaxSendPacketSize)
                 {
                     break;
                 }
@@ -283,7 +282,7 @@ namespace ECommon.Socketing
 
                 for (int i = 0, n = dataList.Count; i < n; ++i)
                 {
-                    _bufferPool.Return(dataList[i].Buf.Array);
+                    _receiveDataBufferPool.Return(dataList[i].Buf.Array);
                 }
             }
             catch (Exception ex)
@@ -314,7 +313,7 @@ namespace ECommon.Socketing
             {
                 if (_receiveSocketArgs.Buffer != null)
                 {
-                    _bufferPool.Return(_receiveSocketArgs.Buffer);
+                    _receiveDataBufferPool.Return(_receiveSocketArgs.Buffer);
                     _receiveSocketArgs.SetBuffer(null, 0, 0);
                 }
             }

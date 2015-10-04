@@ -37,7 +37,7 @@ namespace RemotingPerformanceTest.Server
             {
                 _logger = ObjectContainer.Resolve<ILoggerFactory>().Create("RequestHandler");
                 _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-                _scheduleService.StartTask("Program.PrintThroughput", PrintThroughput, 0, 1000);
+                _scheduleService.StartTask("Program.PrintThroughput", PrintThroughput, 1000, 1000);
             }
 
             public RemotingResponse HandleRequest(IRequestHandlerContext context, RemotingRequest remotingRequest)

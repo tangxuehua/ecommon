@@ -15,27 +15,31 @@ namespace ECommon.Socketing
         #region Private Variables
 
         private readonly Socket _socket;
+        private readonly SocketSetting _setting;
         private readonly IPEndPoint _listeningEndPoint;
         private readonly SocketAsyncEventArgs _acceptSocketArgs;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[], Action<byte[]>> _messageArrivedHandler;
-        private readonly IBufferPool _bufferPool;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
 
         #endregion
 
-        public ServerSocket(IPEndPoint listeningEndPoint, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
+        public ServerSocket(IPEndPoint listeningEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
         {
             Ensure.NotNull(listeningEndPoint, "listeningEndPoint");
+            Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
             _listeningEndPoint = listeningEndPoint;
+            _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _connectionEventListeners = new List<IConnectionEventListener>();
             _messageArrivedHandler = messageArrivedHandler;
             _socket = SocketUtils.CreateSocket();
             _acceptSocketArgs = new SocketAsyncEventArgs();
             _acceptSocketArgs.Completed += AcceptCompleted;
-            _bufferPool = new BufferPool(8192, 50);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
@@ -107,7 +111,7 @@ namespace ECommon.Socketing
             {
                 try
                 {
-                    var connection = new TcpConnection(socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
+                    var connection = new TcpConnection(socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
 
                     _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
 
@@ -132,17 +136,14 @@ namespace ECommon.Socketing
         }
         private void OnMessageArrived(ITcpConnection connection, byte[] message)
         {
-            Task.Factory.StartNew(() =>
+            try
             {
-                try
-                {
-                    _messageArrivedHandler(connection, message, reply => connection.Send(reply));
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error("Handle message error.", ex);
-                }
-            });
+                _messageArrivedHandler(connection, message, reply => connection.Send(reply));
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Handle message error.", ex);
+            }
         }
         private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
         {

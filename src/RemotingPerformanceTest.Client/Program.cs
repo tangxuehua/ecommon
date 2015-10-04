@@ -18,9 +18,8 @@ namespace RemotingPerformanceTest.Client
 {
     class Program
     {
-        static long _sendingCount = 0;
-        static long _previousSentCount = 0;
-        static long _sentCount = 0;
+        static long _sentCount;
+        static long _previousSentCount;
         static string _mode;
         static ILogger _logger;
         static IScheduleService _scheduleService;
@@ -28,8 +27,8 @@ namespace RemotingPerformanceTest.Client
         static void Main(string[] args)
         {
             InitializeECommon();
-            StartPrintThroughputTask();
             SendMessageTest();
+            StartPrintThroughputTask();
             Console.ReadLine();
         }
 
@@ -54,21 +53,26 @@ namespace RemotingPerformanceTest.Client
             var clientCount = int.Parse(ConfigurationManager.AppSettings["ClientCount"]);
             var messageSize = int.Parse(ConfigurationManager.AppSettings["MessageSize"]);
             var messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
-            var sleepMilliseconds = int.Parse(ConfigurationManager.AppSettings["SleepMilliseconds"]);
-            var batchSize = int.Parse(ConfigurationManager.AppSettings["BatchSize"]);
+            var sendMessageFlowControlWaitMilliseconds = int.Parse(ConfigurationManager.AppSettings["SendMessageFlowControlWaitMilliseconds"]);
+            var sendMessageFlowControlCount = int.Parse(ConfigurationManager.AppSettings["SendMessageFlowControlCount"]);
             var message = new byte[messageSize];
             var actions = new List<Action>();
-
-            for (var i = 1; i <= clientCount; i++)
+            var socketSetting = new SocketSetting
             {
-                var client = new SocketRemotingClient("Client" + i.ToString(), new IPEndPoint(serverAddress, 5000));
+                SendMessageFlowControlCount = sendMessageFlowControlCount,
+                SendMessageFlowControlWaitMilliseconds = sendMessageFlowControlWaitMilliseconds
+            };
+
+            for (var i = 0; i < clientCount; i++)
+            {
+                var client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000), socketSetting);
                 client.Start();
-                actions.Add(() => SendMessages(client, _mode, messageCount, sleepMilliseconds, batchSize, message));
+                actions.Add(() => SendMessages(client, _mode, messageCount, message));
             }
 
-            Parallel.Invoke(actions.ToArray());
+            Task.Factory.StartNew(() => Parallel.Invoke(actions.ToArray()));
         }
-        static void SendMessages(SocketRemotingClient client, string mode, int count, int sleepMilliseconds, int batchSize, byte[] message)
+        static void SendMessages(SocketRemotingClient client, string mode, int count, byte[] message)
         {
             _logger.Info("----Send message test----");
 

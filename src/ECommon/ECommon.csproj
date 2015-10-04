@@ -84,6 +84,7 @@
     <Compile Include="Socketing\BufferManagement\IntelliPool.cs" />
     <Compile Include="Socketing\BufferManagement\IPool.cs" />
     <Compile Include="Socketing\BufferManagement\IPoolItemCreator.cs" />
+    <Compile Include="Socketing\SocketSetting.cs" />
     <Compile Include="Socketing\IConnectionEventListener.cs" />
     <Compile Include="Socketing\ISocketServerEventListener.cs" />
     <Compile Include="Socketing\ISocketClientEventListener.cs" />
@@ -96,7 +97,6 @@
     <Compile Include="Utilities\Ensure.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
-    <Compile Include="Utilities\LockUtility.cs" />
     <Compile Include="Utilities\ObjectId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scheduling\IScheduleService.cs" />

@@ -19,16 +19,16 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingClient
     {
-        private readonly string _id;
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
         private readonly Dictionary<int, IResponseHandler> _responseHandlerDict;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _replyMessageQueue;
         private readonly IScheduleService _scheduleService;
-        private readonly IBufferPool _bufferPool;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
         private readonly Worker _worker;
+        private readonly SocketSetting _setting;
 
         private EndPoint _serverEndPoint;
         private EndPoint _localEndPoint;
@@ -39,24 +39,27 @@ namespace ECommon.Remoting
         {
             get { return _clientSocket.IsConnected; }
         }
-
-        public SocketRemotingClient(string id) : this(id, new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
-        public SocketRemotingClient(string id, EndPoint serverEndPoint, EndPoint localEndPoint = null)
+        public EndPoint LocalEndPoint
         {
-            Ensure.NotNull(id, "id");
+            get { return _localEndPoint; }
+        }
+
+        public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingClient(EndPoint serverEndPoint, SocketSetting setting = null, EndPoint localEndPoint = null)
+        {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
 
-            _id = id;
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
-            _bufferPool = new BufferPool(8192, 50);
-            _clientSocket = new ClientSocket(serverEndPoint, localEndPoint, _bufferPool, ReceiveReplyMessage);
+            _setting = setting ?? new SocketSetting();
+            _receiveDataBufferPool = new BufferPool(_setting.ReceiveDataBufferSize, _setting.ReceiveDataBufferCount);
+            _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, ReceiveReplyMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _responseHandlerDict = new Dictionary<int, IResponseHandler>();
             _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _worker = new Worker(string.Format("{0}.HandleReplyMessage", _id), HandleReplyMessage);
+            _worker = new Worker(string.Format("{0}.HandleReplyMessage", this.GetType().Name), HandleReplyMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
 
             RegisterConnectionEventListener(new ConnectionEventListener(this));
@@ -212,7 +215,7 @@ namespace ECommon.Remoting
             try
             {
                 _clientSocket.Shutdown();
-                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _bufferPool, ReceiveReplyMessage);
+                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, ReceiveReplyMessage);
                 foreach (var listener in _connectionEventListeners)
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);
@@ -247,19 +250,19 @@ namespace ECommon.Remoting
         }
         private void StartScanTimeoutRequestTask()
         {
-            _scheduleService.StartTask(string.Format("{0}.ScanTimeoutRequest", _id), ScanTimeoutRequest, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ScanTimeoutRequest", this.GetType().Name), ScanTimeoutRequest, 1000, 1000);
         }
         private void StopScanTimeoutRequestTask()
         {
-            _scheduleService.StopTask(string.Format("{0}.ScanTimeoutRequest", _id));
+            _scheduleService.StopTask(string.Format("{0}.ScanTimeoutRequest", this.GetType().Name));
         }
         private void StartReconnectServerTask()
         {
-            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", _id), ReconnectServer, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", this.GetType().Name), ReconnectServer, 1000, 1000);
         }
         private void StopReconnectServerTask()
         {
-            _scheduleService.StopTask(string.Format("{0}.ReconnectServer", _id));
+            _scheduleService.StopTask(string.Format("{0}.ReconnectServer", this.GetType().Name));
         }
         private void EnsureClientStatus()
         {
@@ -276,6 +279,10 @@ namespace ECommon.Remoting
         {
             Interlocked.Exchange(ref _reconnecting, 0);
         }
+        private void SetLocalEndPoint(EndPoint localEndPoint)
+        {
+            _localEndPoint = localEndPoint;
+        }
 
         class ConnectionEventListener : IConnectionEventListener
         {
@@ -291,6 +298,7 @@ namespace ECommon.Remoting
             {
                 _remotingClient.StopReconnectServerTask();
                 _remotingClient.ExitReconnecting();
+                _remotingClient.SetLocalEndPoint(connection.LocalEndPoint);
             }
             public void OnConnectionFailed(SocketError socketError)
             {

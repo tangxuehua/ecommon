@@ -18,9 +18,10 @@ namespace ECommon.Socketing
         private EndPoint _localEndPoint;
         private Socket _socket;
         private TcpConnection _connection;
+        private readonly SocketSetting _setting;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
-        private readonly IBufferPool _bufferPool;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
 
@@ -35,16 +36,19 @@ namespace ECommon.Socketing
             get { return _socket; }
         }
 
-        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, IBufferPool bufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
+        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
+            Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
             _connectionEventListeners = new List<IConnectionEventListener>();
 
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
-            _bufferPool = bufferPool;
+            _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _messageArrivedHandler = messageArrivedHandler;
             _waitConnectHandle = new ManualResetEvent(false);
             _socket = SocketUtils.CreateSocket();
@@ -104,7 +108,7 @@ namespace ECommon.Socketing
                 return;
             }
 
-            _connection = new TcpConnection(_socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
+            _connection = new TcpConnection(_socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
 
             _logger.InfoFormat("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint);
 

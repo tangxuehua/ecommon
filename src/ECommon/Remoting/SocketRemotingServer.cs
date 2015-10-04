@@ -5,6 +5,7 @@ using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Socketing;
+using ECommon.Socketing.BufferManagement;
 
 namespace ECommon.Remoting
 {
@@ -12,13 +13,17 @@ namespace ECommon.Remoting
     {
         private readonly ServerSocket _serverSocket;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
+        private readonly SocketSetting _setting;
         private bool _isShuttingdown = false;
 
         public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
-        public SocketRemotingServer(string name, IPEndPoint listeningEndPoint)
+        public SocketRemotingServer(string name, IPEndPoint listeningEndPoint, SocketSetting setting = null)
         {
-            _serverSocket = new ServerSocket(listeningEndPoint, HandleRemotingRequest);
+            _setting = setting ?? new SocketSetting();
+            _receiveDataBufferPool = new BufferPool(_setting.ReceiveDataBufferSize, _setting.ReceiveDataBufferCount);
+            _serverSocket = new ServerSocket(listeningEndPoint, _setting, _receiveDataBufferPool, HandleRemotingRequest);
             _requestHandlerDict = new Dictionary<int, IRequestHandler>();
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(name ?? GetType().Name);
         }

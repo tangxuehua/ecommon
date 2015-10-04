@@ -45,7 +45,7 @@ namespace ECommon.Configurations
             SetDefault<ILoggerFactory, EmptyLoggerFactory>();
             SetDefault<IBinarySerializer, DefaultBinarySerializer>();
             SetDefault<IJsonSerializer, NotImplementedJsonSerializer>();
-            SetDefault<IScheduleService, ScheduleService>();
+            SetDefault<IScheduleService, ScheduleService>(LifeStyle.Transient);
             SetDefault<IOHelper, IOHelper>();
             return this;
         }
