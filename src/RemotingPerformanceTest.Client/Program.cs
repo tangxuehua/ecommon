@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Configuration;
 using System.Net;
 using System.Text;
@@ -18,16 +18,21 @@ namespace RemotingPerformanceTest.Client
 {
     class Program
     {
-        static long _sentCount;
-        static long _previousSentCount;
         static string _mode;
+        static int _messageCount;
+        static byte[] _message;
+        static int _parallelThreadCount;
         static ILogger _logger;
         static IScheduleService _scheduleService;
+        static TaskFactory _sendTaskFactory;
+        static SocketRemotingClient _client;
+        static ConcurrentDictionary<int, ThreadSendMessageStatisticData> _threadSendMessageStatisticDataDict;
 
         static void Main(string[] args)
         {
             InitializeECommon();
-            SendMessageTest();
+            InitializeTest();
+            SendMessages();
             StartPrintThroughputTask();
             Console.ReadLine();
         }
@@ -44,68 +49,76 @@ namespace RemotingPerformanceTest.Client
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
         }
-        static void SendMessageTest()
+        static void InitializeTest()
         {
             _mode = ConfigurationManager.AppSettings["Mode"];
+            _parallelThreadCount = int.Parse(ConfigurationManager.AppSettings["ParallelThreadCount"]);
+            _sendTaskFactory = new TaskFactory(new LimitedConcurrencyLevelTaskScheduler(_parallelThreadCount));
+            _messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
 
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
             var serverAddress = string.IsNullOrEmpty(serverIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(serverIP);
-            var clientCount = int.Parse(ConfigurationManager.AppSettings["ClientCount"]);
             var messageSize = int.Parse(ConfigurationManager.AppSettings["MessageSize"]);
-            var messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
             var sendMessageFlowControlWaitMilliseconds = int.Parse(ConfigurationManager.AppSettings["SendMessageFlowControlWaitMilliseconds"]);
             var sendMessageFlowControlCount = int.Parse(ConfigurationManager.AppSettings["SendMessageFlowControlCount"]);
-            var message = new byte[messageSize];
-            var actions = new List<Action>();
             var socketSetting = new SocketSetting
             {
                 SendMessageFlowControlCount = sendMessageFlowControlCount,
                 SendMessageFlowControlWaitMilliseconds = sendMessageFlowControlWaitMilliseconds
             };
 
-            for (var i = 0; i < clientCount; i++)
-            {
-                var client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000), socketSetting);
-                client.Start();
-                actions.Add(() => SendMessages(client, _mode, messageCount, message));
-            }
+            _message = new byte[messageSize];
+            _threadSendMessageStatisticDataDict = new ConcurrentDictionary<int, ThreadSendMessageStatisticData>();
 
-            Task.Factory.StartNew(() => Parallel.Invoke(actions.ToArray()));
+            _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000), socketSetting);
+            _client.Start();
         }
-        static void SendMessages(SocketRemotingClient client, string mode, int count, byte[] message)
+        static void SendMessages()
         {
-            _logger.Info("----Send message test----");
-
-            if (mode == "Oneway")
+            if (_mode == "Oneway")
             {
-                for (var i = 1; i <= count; i++)
+                ParallelSendMessages((messageCount, statisticData) =>
                 {
-                    TryAction(() => client.InvokeOneway(new RemotingRequest(100, message)));
-                    Interlocked.Increment(ref _sentCount);
-                }
+                    for (var i = 0; i < messageCount; i++)
+                    {
+                        _client.InvokeOneway(new RemotingRequest(100, _message));
+                        statisticData.SentCount++;
+                    }
+                });
             }
-            else if (mode == "Sync")
+            else if (_mode == "Sync")
             {
-                for (var i = 1; i <= count; i++)
+                ParallelSendMessages((messageCount, statisticData) =>
                 {
-                    TryAction(() => client.InvokeSync(new RemotingRequest(100, message), 5000));
-                    Interlocked.Increment(ref _sentCount);
-                }
+                    for (var i = 0; i < messageCount; i++)
+                    {
+                        _client.InvokeSync(new RemotingRequest(100, _message), 5000);
+                        statisticData.SentCount++;
+                    }
+                });
             }
-            else if (mode == "Async")
+            else if (_mode == "Async")
             {
-                for (var i = 1; i <= count; i++)
+                ParallelSendMessages((messageCount, statisticData) =>
                 {
-                    TryAction(() => client.InvokeAsync(new RemotingRequest(100, message), 100000).ContinueWith(SendCallback));
-                }
+                    for (var i = 0; i < messageCount; i++)
+                    {
+                        _client.InvokeAsync(new RemotingRequest(100, _message), 100000).ContinueWith(SendCallback);
+                        statisticData.SentCount++;
+                    }
+                });
             }
-            else if (mode == "Callback")
+            else if (_mode == "Callback")
             {
-                client.RegisterResponseHandler(100, new ResponseHandler());
-                for (var i = 1; i <= count; i++)
+                _client.RegisterResponseHandler(100, new ResponseHandler());
+                ParallelSendMessages((messageCount, statisticData) =>
                 {
-                    TryAction(() => client.InvokeWithCallback(new RemotingRequest(100, message)));
-                }
+                    for (var i = 0; i < messageCount; i++)
+                    {
+                        _client.InvokeWithCallback(new RemotingRequest(100, _message));
+                        statisticData.SentCount++;
+                    }
+                });
             }
         }
         static void SendCallback(Task<RemotingResponse> task)
@@ -120,18 +133,37 @@ namespace RemotingPerformanceTest.Client
                 _logger.Error(Encoding.UTF8.GetString(task.Result.Body));
                 return;
             }
-            Interlocked.Increment(ref _sentCount);
         }
-        static void TryAction(Action sendRequestAction)
+        static void ParallelSendMessages(Action<int, ThreadSendMessageStatisticData> sendRequestAction)
         {
-            try
+            var messageCountPerThread = _messageCount / _parallelThreadCount;
+
+            for (var i = 0; i < _parallelThreadCount; i++)
             {
-                sendRequestAction();
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorFormat("Send remoting request failed, errorMsg:{0}", ex.Message);
-                Thread.Sleep(5000);
+                _sendTaskFactory.StartNew(() =>
+                {
+                    var currentThreadId = Thread.CurrentThread.ManagedThreadId;
+                    var statisticData = new ThreadSendMessageStatisticData
+                    {
+                        ThreadId = currentThreadId
+                    };
+                    if (_threadSendMessageStatisticDataDict.TryAdd(statisticData.ThreadId, statisticData))
+                    {
+                        try
+                        {
+                            sendRequestAction(messageCountPerThread, statisticData);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.ErrorFormat("Send remoting request failed, errorMsg:{0}", ex.Message);
+                            Thread.Sleep(5000);
+                        }
+                    }
+                    else
+                    {
+                        _logger.ErrorFormat("Duplicated threadId {0}", currentThreadId);
+                    }
+                });
             }
         }
         static void StartPrintThroughputTask()
@@ -140,13 +172,21 @@ namespace RemotingPerformanceTest.Client
         }
         static void PrintThroughput()
         {
-            var totalSentCount = _sentCount;
-            var totalCountOfCurrentPeriod = totalSentCount - _previousSentCount;
-            _previousSentCount = totalSentCount;
-
-            _logger.InfoFormat("Send message mode: {0}, currentTime: {1}, totalSent: {2}, throughput: {3}/s", _mode, DateTime.Now.ToLongTimeString(), totalSentCount, totalCountOfCurrentPeriod);
+            foreach (var statisticData in _threadSendMessageStatisticDataDict.Values)
+            {
+                var totalSentCount = statisticData.SentCount;
+                var totalCountOfCurrentPeriod = totalSentCount - statisticData.PreviousSentCount;
+                statisticData.PreviousSentCount = totalSentCount;
+                _logger.InfoFormat("Send message mode: {0}, threadId: {1}, currentTime: {2}, totalSent: {3}, throughput: {4}/s", _mode, statisticData.ThreadId, DateTime.Now.ToLongTimeString(), totalSentCount, totalCountOfCurrentPeriod);
+            }
         }
 
+        class ThreadSendMessageStatisticData
+        {
+            public int ThreadId;
+            public int SentCount;
+            public int PreviousSentCount;
+        }
         class ResponseHandler : IResponseHandler
         {
             public void HandleResponse(RemotingResponse remotingResponse)
@@ -156,7 +196,6 @@ namespace RemotingPerformanceTest.Client
                     _logger.Error(Encoding.UTF8.GetString(remotingResponse.Body));
                     return;
                 }
-                Interlocked.Increment(ref _sentCount);
             }
         }
     }
