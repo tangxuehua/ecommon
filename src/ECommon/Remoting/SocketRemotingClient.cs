@@ -176,7 +176,10 @@ namespace ECommon.Remoting
                 {
                     if (responseFuture.SetResponse(remotingResponse))
                     {
-                        _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
+                        if (_logger.IsDebugEnabled)
+                        {
+                            _logger.DebugFormat("Remoting response back, request code:{0}, requect sequence:{1}, time spent:{2}", responseFuture.Request.Code, responseFuture.Request.Sequence, (DateTime.Now - responseFuture.BeginTime).TotalMilliseconds);
+                        }
                     }
                     else
                     {
@@ -201,7 +204,10 @@ namespace ECommon.Remoting
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
                     responseFuture.SetResponse(new RemotingResponse(responseFuture.Request.Code, 0, responseFuture.Request.Type, TimeoutMessage, responseFuture.Request.Sequence));
-                    _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
+                    if (_logger.IsDebugEnabled)
+                    {
+                        _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);
+                    }
                 }
             }
         }
