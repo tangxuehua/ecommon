@@ -27,7 +27,6 @@ namespace ECommon.Remoting
         private readonly IScheduleService _scheduleService;
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
-        private readonly Worker _worker;
         private readonly SocketSetting _setting;
 
         private EndPoint _serverEndPoint;
@@ -53,13 +52,12 @@ namespace ECommon.Remoting
             _localEndPoint = localEndPoint;
             _setting = setting ?? new SocketSetting();
             _receiveDataBufferPool = new BufferPool(_setting.ReceiveDataBufferSize, _setting.ReceiveDataBufferPoolSize);
-            _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, ReceiveReplyMessage);
+            _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleReplyMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _responseHandlerDict = new Dictionary<int, IResponseHandler>();
             _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-            _worker = new Worker(string.Format("{0}.HandleReplyMessage", this.GetType().Name), HandleReplyMessage);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
 
             RegisterConnectionEventListener(new ConnectionEventListener(this));
@@ -79,7 +77,6 @@ namespace ECommon.Remoting
         public SocketRemotingClient Start()
         {
             StartClientSocket();
-            StartHandleMessageWorker();
             StartScanTimeoutRequestTask();
             return this;
         }
@@ -87,7 +84,6 @@ namespace ECommon.Remoting
         {
             StopReconnectServerTask();
             StopScanTimeoutRequestTask();
-            StopHandleMessageWorker();
             ShutdownClientSocket();
         }
 
@@ -145,17 +141,11 @@ namespace ECommon.Remoting
             _clientSocket.QueueMessage(RemotingUtil.BuildRequestMessage(request));
         }
 
-        private void ReceiveReplyMessage(ITcpConnection connection, byte[] message)
+        private void HandleReplyMessage(ITcpConnection connection, byte[] message)
         {
-            _replyMessageQueue.Add(message);
-        }
-        private void HandleReplyMessage()
-        {
-            var responseMessage = _replyMessageQueue.Take();
+            if (message == null) return;
 
-            if (responseMessage == null) return;
-
-            var remotingResponse = RemotingUtil.ParseResponse(responseMessage);
+            var remotingResponse = RemotingUtil.ParseResponse(message);
 
             if (remotingResponse.Type == RemotingRequestType.Callback)
             {
@@ -213,7 +203,7 @@ namespace ECommon.Remoting
         }
         private void ReconnectServer()
         {
-            _logger.InfoFormat("Try to reconnect to server, remote endpoint:{0}", _serverEndPoint);
+            _logger.InfoFormat("Try to reconnect to server, address: {0}", _serverEndPoint);
 
             if (_clientSocket.IsConnected) return;
             if (!EnterReconnecting()) return;
@@ -221,7 +211,7 @@ namespace ECommon.Remoting
             try
             {
                 _clientSocket.Shutdown();
-                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, ReceiveReplyMessage);
+                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleReplyMessage);
                 foreach (var listener in _connectionEventListeners)
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);
@@ -241,18 +231,6 @@ namespace ECommon.Remoting
         private void ShutdownClientSocket()
         {
             _clientSocket.Shutdown();
-        }
-        private void StartHandleMessageWorker()
-        {
-            _worker.Start();
-        }
-        private void StopHandleMessageWorker()
-        {
-            _worker.Stop();
-            if (_replyMessageQueue.Count == 0)
-            {
-                _replyMessageQueue.Add(null);
-            }
         }
         private void StartScanTimeoutRequestTask()
         {

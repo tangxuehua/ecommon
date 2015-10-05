@@ -88,7 +88,14 @@ namespace ECommon.Socketing
         }
         public ClientSocket Shutdown()
         {
-            SocketUtils.ShutdownSocket(_socket);
+            if (_connection != null)
+            {
+                _connection.Close();
+            }
+            else
+            {
+                SocketUtils.ShutdownSocket(_socket);
+            }
             return this;
         }
 
