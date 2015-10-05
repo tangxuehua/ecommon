@@ -27,11 +27,11 @@ namespace RemotingPerformanceTest.Server
 
         class RequestHandler : IRequestHandler
         {
+            private readonly IScheduleService _scheduleService;
+            private readonly ILogger _logger;
+            private readonly byte[] response = new byte[0];
             private long _previusHandledCount;
             private long _handledCount;
-            private IScheduleService _scheduleService;
-            private ILogger _logger;
-            byte[] response = new byte[100];
 
             public RequestHandler()
             {
@@ -49,10 +49,10 @@ namespace RemotingPerformanceTest.Server
             private void PrintThroughput()
             {
                 var totalHandledCount = _handledCount;
-                var totalCountOfCurrentPeriod = totalHandledCount - _previusHandledCount;
+                var throughput = totalHandledCount - _previusHandledCount;
                 _previusHandledCount = totalHandledCount;
 
-                _logger.InfoFormat("currentTime: {0}, totalReceived: {1}, throughput: {2}/s", DateTime.Now.ToLongTimeString(), totalHandledCount, totalCountOfCurrentPeriod);
+                _logger.InfoFormat("currentTime: {0}, totalReceived: {1}, throughput: {2}/s", DateTime.Now.ToLongTimeString(), totalHandledCount, throughput);
             }
         }
     }

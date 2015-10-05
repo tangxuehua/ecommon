@@ -29,151 +29,28 @@ namespace ECommon.Socketing
         private readonly SocketSetting _setting;
         private readonly EndPoint _localEndPoint;
         private readonly EndPoint _remotingEndPoint;
-        private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly IMessageFramer _framer;
         private readonly ILogger _logger;
         private readonly ConcurrentQueue<IEnumerable<ArraySegment<byte>>> _sendingQueue = new ConcurrentQueue<IEnumerable<ArraySegment<byte>>>();
         private readonly ConcurrentQueue<ReceivedData> _receiveQueue = new ConcurrentQueue<ReceivedData>();
+        private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
         private readonly object _receivingLock = new object();
-        private readonly int _flowControlCount;
-        private readonly IList<SendMessageWorker> _sendMessageWorkerList = new List<SendMessageWorker>();
+        private readonly int _flowControlThreshold;
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
         private Action<ITcpConnection, byte[]> _messageArrivedHandler;
 
+        private int _sending;
         private int _receiving;
         private int _parsing;
 
-        private long _segmentCount;
+        private long _pendingMessageCount;
         private long _flowControlTimes;
 
         #endregion
-
-        class SendMessageWorker
-        {
-            private readonly TcpConnection _connection;
-            private readonly MemoryStream _sendingStream;
-            private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack;
-            private int _sending;
-
-            public SendMessageWorker(TcpConnection connection)
-            {
-                _connection = connection;
-                _sendingStream = new MemoryStream();
-                _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
-
-                for (var i = 0; i < 2; i++)
-                {
-                    var sendSocketArgs = new SocketAsyncEventArgs();
-                    sendSocketArgs.AcceptSocket = _connection.Socket;
-                    sendSocketArgs.Completed += OnSendAsyncCompleted;
-                    _sendSocketArgsStack.Push(sendSocketArgs);
-                }
-            }
-
-            public bool TrySend()
-            {
-                if (!EnterSending()) return false;
-
-                _sendingStream.SetLength(0);
-
-                IEnumerable<ArraySegment<byte>> segments;
-                while (_connection._sendingQueue.TryDequeue(out segments))
-                {
-                    Interlocked.Decrement(ref _connection._segmentCount);
-                    foreach (var segment in segments)
-                    {
-                        _sendingStream.Write(segment.Array, segment.Offset, segment.Count);
-                    }
-                    if (_sendingStream.Length >= _connection.Setting.MaxSendPacketSize)
-                    {
-                        break;
-                    }
-                }
-
-                if (_sendingStream.Length == 0)
-                {
-                    ExitSending();
-                    if (_connection._sendingQueue.Count > 0)
-                    {
-                        TrySend();
-                    }
-                    return false;
-                }
-
-                try
-                {
-                    var sendSocktArgs = GetSendSocketEventArgs();
-                    sendSocktArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
-                    var firedAsync = sendSocktArgs.AcceptSocket.SendAsync(sendSocktArgs);
-                    if (!firedAsync)
-                    {
-                        ProcessSend(sendSocktArgs);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _connection.CloseInternal(SocketError.Shutdown, "Socket send error, errorMessage:" + ex.Message);
-                    ExitSending();
-                }
-
-                return true;
-            }
-
-            private void ProcessSend(SocketAsyncEventArgs socketArgs)
-            {
-                if (socketArgs.Buffer != null)
-                {
-                    socketArgs.SetBuffer(null, 0, 0);
-                }
-
-                ReturnSendSocketEventArgs(socketArgs);
-                ExitSending();
-
-                if (socketArgs.SocketError == SocketError.Success)
-                {
-                    TrySend();
-                }
-                else
-                {
-                    _connection.CloseInternal(socketArgs.SocketError, "Socket send error.");
-                }
-            }
-            private SocketAsyncEventArgs GetSendSocketEventArgs()
-            {
-                SocketAsyncEventArgs args;
-                if (_sendSocketArgsStack.TryPop(out args))
-                {
-                    return args;
-                }
-
-                var spinWait = default(SpinWait);
-                while (!_sendSocketArgsStack.TryPop(out args))
-                {
-                    spinWait.SpinOnce();
-                }
-                return args;
-            }
-            private void ReturnSendSocketEventArgs(SocketAsyncEventArgs args)
-            {
-                _sendSocketArgsStack.Push(args);
-            }
-            private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
-            {
-                ProcessSend(e);
-            }
-            private bool EnterSending()
-            {
-                return Interlocked.CompareExchange(ref _sending, 1, 0) == 0;
-            }
-            private void ExitSending()
-            {
-                Interlocked.Exchange(ref _sending, 0);
-            }
-        }
 
         public bool IsConnected
         {
@@ -206,16 +83,19 @@ namespace ECommon.Socketing
 
             _socket = socket;
             _setting = setting;
-            _flowControlCount = _setting.SendMessageFlowControlCount;
+            _flowControlThreshold = _setting.SendMessageFlowControlThreshold;
             _receiveDataBufferPool = receiveDataBufferPool;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
             _messageArrivedHandler = messageArrivedHandler;
             _connectionClosedHandler = connectionClosedHandler;
 
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 2; i++)
             {
-                _sendMessageWorkerList.Add(new SendMessageWorker(this));
+                var sendSocketArgs = new SocketAsyncEventArgs();
+                sendSocketArgs.AcceptSocket = _socket;
+                sendSocketArgs.Completed += OnSendAsyncCompleted;
+                _sendSocketArgsStack.Push(sendSocketArgs);
             }
 
             _receiveSocketArgs = new SocketAsyncEventArgs();
@@ -228,6 +108,7 @@ namespace ECommon.Socketing
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
 
             TryReceive();
+            TrySend();
         }
 
         public void Send(byte[] message)
@@ -289,11 +170,76 @@ namespace ECommon.Socketing
             }
             var segments = _framer.FrameData(new ArraySegment<byte>(message, 0, message.Length));
             _sendingQueue.Enqueue(segments);
-            Interlocked.Increment(ref _segmentCount);
+            Interlocked.Increment(ref _pendingMessageCount);
+        }
+        private void TrySend()
+        {
+            if (!EnterSending()) return;
+
+            _sendingStream.SetLength(0);
+
+            IEnumerable<ArraySegment<byte>> segments;
+            while (_sendingQueue.TryDequeue(out segments))
+            {
+                Interlocked.Decrement(ref _pendingMessageCount);
+                foreach (var segment in segments)
+                {
+                    _sendingStream.Write(segment.Array, segment.Offset, segment.Count);
+                }
+                if (_sendingStream.Length >= _setting.SendBufferSize)
+                {
+                    break;
+                }
+            }
+
+            if (_sendingStream.Length == 0)
+            {
+                ExitSending();
+                if (_sendingQueue.Count > 0)
+                {
+                    TrySend();
+                }
+                return;
+            }
+
+            try
+            {
+                var sendSocktArgs = GetSendSocketEventArgs();
+                sendSocktArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
+                var firedAsync = sendSocktArgs.AcceptSocket.SendAsync(sendSocktArgs);
+                if (!firedAsync)
+                {
+                    ProcessSend(sendSocktArgs);
+                }
+            }
+            catch (Exception ex)
+            {
+                CloseInternal(SocketError.Shutdown, "Socket send error, errorMessage:" + ex.Message);
+                ExitSending();
+            }
+        }
+        private void ProcessSend(SocketAsyncEventArgs socketArgs)
+        {
+            if (socketArgs.Buffer != null)
+            {
+                socketArgs.SetBuffer(null, 0, 0);
+            }
+
+            ReturnSendSocketEventArgs(socketArgs);
+            ExitSending();
+
+            if (socketArgs.SocketError == SocketError.Success)
+            {
+                TrySend();
+            }
+            else
+            {
+                CloseInternal(socketArgs.SocketError, "Socket send error.");
+            }
         }
         private void FlowControlIfNecessary()
         {
-            if (_flowControlCount > 0 && _segmentCount >= _flowControlCount)
+            if (_flowControlThreshold > 0 && _pendingMessageCount >= _flowControlThreshold)
             {
                 Thread.Sleep(_setting.SendMessageFlowControlWaitMilliseconds);
                 var times = Interlocked.Increment(ref _flowControlTimes);
@@ -303,15 +249,28 @@ namespace ECommon.Socketing
                 }
             }
         }
-        private void TrySend()
+        private SocketAsyncEventArgs GetSendSocketEventArgs()
         {
-            foreach (var sendWorker in _sendMessageWorkerList)
+            SocketAsyncEventArgs args;
+            if (_sendSocketArgsStack.TryPop(out args))
             {
-                if (sendWorker.TrySend())
-                {
-                    break;
-                }
+                return args;
             }
+
+            var spinWait = default(SpinWait);
+            while (!_sendSocketArgsStack.TryPop(out args))
+            {
+                spinWait.SpinOnce();
+            }
+            return args;
+        }
+        private void ReturnSendSocketEventArgs(SocketAsyncEventArgs args)
+        {
+            _sendSocketArgsStack.Push(args);
+        }
+        private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            ProcessSend(e);
         }
 
         private void OnReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
@@ -338,7 +297,6 @@ namespace ECommon.Socketing
             ExitReceiving();
             TryReceive();
         }
-
         private void TryParsingReceivedData()
         {
             if (!EnterParsing()) return;
@@ -418,6 +376,14 @@ namespace ECommon.Socketing
             }
         }
 
+        private bool EnterSending()
+        {
+            return Interlocked.CompareExchange(ref _sending, 1, 0) == 0;
+        }
+        private void ExitSending()
+        {
+            Interlocked.Exchange(ref _sending, 0);
+        }
         private bool EnterReceiving()
         {
             return Interlocked.CompareExchange(ref _receiving, 1, 0) == 0;

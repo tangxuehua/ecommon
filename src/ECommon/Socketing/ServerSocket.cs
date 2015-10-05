@@ -37,7 +37,7 @@ namespace ECommon.Socketing
             _receiveDataBufferPool = receiveDataBufferPool;
             _connectionEventListeners = new List<IConnectionEventListener>();
             _messageArrivedHandler = messageArrivedHandler;
-            _socket = SocketUtils.CreateSocket();
+            _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
             _acceptSocketArgs = new SocketAsyncEventArgs();
             _acceptSocketArgs.Completed += AcceptCompleted;
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);

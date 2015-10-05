@@ -51,7 +51,7 @@ namespace ECommon.Socketing
             _receiveDataBufferPool = receiveDataBufferPool;
             _messageArrivedHandler = messageArrivedHandler;
             _waitConnectHandle = new ManualResetEvent(false);
-            _socket = SocketUtils.CreateSocket();
+            _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
         }
 
