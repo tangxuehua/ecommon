@@ -11,8 +11,6 @@ namespace ECommon.Remoting
 {
     public class SocketRemotingServer
     {
-        private readonly short OnewayResponseCode = 100;
-        private readonly byte[] EmptyBody = new byte[0];
         private readonly ServerSocket _serverSocket;
         private readonly Dictionary<int, IRequestHandler> _requestHandlerDict;
         private readonly IBufferPool _receiveDataBufferPool;

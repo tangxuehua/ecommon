@@ -25,7 +25,6 @@ namespace RemotingPerformanceTest.Client
         static int _parallelThreadCount;
         static ILogger _logger;
         static IScheduleService _scheduleService;
-        static TaskFactory _sendTaskFactory;
         static SocketRemotingClient _client;
 
         static void Main(string[] args)
@@ -53,7 +52,6 @@ namespace RemotingPerformanceTest.Client
         {
             _mode = ConfigurationManager.AppSettings["Mode"];
             _parallelThreadCount = int.Parse(ConfigurationManager.AppSettings["ParallelThreadCount"]);
-            _sendTaskFactory = new TaskFactory(new LimitedConcurrencyLevelTaskScheduler(_parallelThreadCount));
             _messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
 
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
@@ -138,7 +136,7 @@ namespace RemotingPerformanceTest.Client
 
             for (var i = 0; i < _parallelThreadCount; i++)
             {
-                _sendTaskFactory.StartNew(() =>
+                Task.Factory.StartNew(() =>
                 {
                     try
                     {
