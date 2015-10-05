@@ -98,17 +98,11 @@ namespace RemotingPerformanceTest.Client
             }
             else if (_mode == "Async")
             {
-                ParallelSendMessages(async messageCount =>
+                ParallelSendMessages(messageCount =>
                 {
                     for (var i = 0; i < messageCount; i++)
                     {
-                        var response = await _client.InvokeAsync(new RemotingRequest(100, _message), 100000);
-                        if (response.Code <= 0)
-                        {
-                            _logger.Error(Encoding.UTF8.GetString(response.Body));
-                            return;
-                        }
-                        Interlocked.Increment(ref _sentCount);
+                        _client.InvokeAsync(new RemotingRequest(100, _message), 100000).ContinueWith(SendCallback);
                     }
                 });
             }
@@ -123,6 +117,20 @@ namespace RemotingPerformanceTest.Client
                     }
                 });
             }
+        }
+        static void SendCallback(Task<RemotingResponse> task)
+        {
+            if (task.Exception != null)
+            {
+                _logger.Error(task.Exception);
+                return;
+            }
+            if (task.Result.Code <= 0)
+            {
+                _logger.Error(Encoding.UTF8.GetString(task.Result.Body));
+                return;
+            }
+            Interlocked.Increment(ref _sentCount);
         }
         static void ParallelSendMessages(Action<int> sendRequestAction)
         {

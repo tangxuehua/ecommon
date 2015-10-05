@@ -65,18 +65,17 @@ namespace ECommon.Remoting
             {
                 var errorMessage = string.Format("No request handler found for remoting request:{0}", remotingRequest);
                 _logger.Error(errorMessage);
-                requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(errorMessage), remotingRequest.Sequence));
+                if (remotingRequest.Type != RemotingRequestType.Oneway)
+                {
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(errorMessage), remotingRequest.Sequence));
+                }
                 return;
             }
 
             try
             {
                 var remotingResponse = requestHandler.HandleRequest(requestHandlerContext, remotingRequest);
-                if (remotingRequest.Type == RemotingRequestType.Oneway)
-                {
-                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, OnewayResponseCode, remotingRequest.Type, EmptyBody, remotingRequest.Sequence));
-                }
-                else if (remotingResponse != null)
+                if (remotingRequest.Type != RemotingRequestType.Oneway && remotingResponse != null)
                 {
                     requestHandlerContext.SendRemotingResponse(remotingResponse);
                 }
@@ -85,7 +84,10 @@ namespace ECommon.Remoting
             {
                 var errorMessage = string.Format("Unknown exception raised when handling remoting request:{0}.", remotingRequest);
                 _logger.Error(errorMessage, ex);
-                requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(ex.Message), remotingRequest.Sequence));
+                if (remotingRequest.Type != RemotingRequestType.Oneway)
+                {
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(ex.Message), remotingRequest.Sequence));
+                }
             }
         }
     }
