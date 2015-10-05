@@ -138,7 +138,7 @@ namespace ECommon.Socketing
         {
             try
             {
-                _messageArrivedHandler(connection, message, reply => connection.Send(reply));
+                _messageArrivedHandler(connection, message, reply => connection.QueueMessage(reply));
             }
             catch (Exception ex)
             {

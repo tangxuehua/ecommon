@@ -81,9 +81,9 @@ namespace ECommon.Socketing
 
             return this;
         }
-        public ClientSocket SendAsync(byte[] message)
+        public ClientSocket QueueMessage(byte[] message)
         {
-            _connection.Send(message);
+            _connection.QueueMessage(message);
             return this;
         }
         public ClientSocket Shutdown()

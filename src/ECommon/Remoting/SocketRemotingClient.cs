@@ -126,7 +126,7 @@ namespace ECommon.Remoting
                 throw new ResponseFutureAddFailedException(request.Sequence);
             }
 
-            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
+            _clientSocket.QueueMessage(RemotingUtil.BuildRequestMessage(request));
 
             return taskCompletionSource.Task;
         }
@@ -135,14 +135,14 @@ namespace ECommon.Remoting
             EnsureClientStatus();
 
             request.Type = RemotingRequestType.Callback;
-            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
+            _clientSocket.QueueMessage(RemotingUtil.BuildRequestMessage(request));
         }
         public void InvokeOneway(RemotingRequest request)
         {
             EnsureClientStatus();
 
             request.Type = RemotingRequestType.Oneway;
-            _clientSocket.SendAsync(RemotingUtil.BuildRequestMessage(request));
+            _clientSocket.QueueMessage(RemotingUtil.BuildRequestMessage(request));
         }
 
         private void ReceiveReplyMessage(ITcpConnection connection, byte[] message)
