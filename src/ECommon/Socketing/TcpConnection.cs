@@ -48,7 +48,6 @@ namespace ECommon.Socketing
         private int _parsing;
 
         private long _pendingMessageCount;
-        private long _flowControlTimes;
 
         #endregion
 
@@ -153,7 +152,7 @@ namespace ECommon.Socketing
                 {
                     _sendingStream.Write(segment.Array, segment.Offset, segment.Count);
                 }
-                if (_sendingStream.Length >= _setting.SendBufferSize)
+                if (_sendingStream.Length >= _setting.MaxSendPacketSize)
                 {
                     break;
                 }
@@ -209,11 +208,6 @@ namespace ECommon.Socketing
             if (_flowControlThreshold > 0 && _pendingMessageCount >= _flowControlThreshold)
             {
                 Thread.Sleep(_setting.SendMessageFlowControlWaitMilliseconds);
-                var times = Interlocked.Increment(ref _flowControlTimes);
-                if (times % 1000 == 0)
-                {
-                    _logger.InfoFormat("Send message flow control times: {0}", times);
-                }
             }
         }
         private SocketAsyncEventArgs GetSendSocketEventArgs()
