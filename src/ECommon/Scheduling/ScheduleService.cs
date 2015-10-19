@@ -24,7 +24,6 @@ namespace ECommon.Scheduling
                 var timer = new Timer(TaskCallback, name, Timeout.Infinite, Timeout.Infinite);
                 _taskDict.Add(name, new TimerBasedTask { Name = name, Action = action, Timer = timer, DueTime = dueTime, Period = period });
                 timer.Change(dueTime, period);
-                _logger.InfoFormat("Task started, name:{0}, due:{1}, period:{2}", name, dueTime, period);
             }
         }
         public void StopTask(string name)
@@ -35,7 +34,6 @@ namespace ECommon.Scheduling
                 {
                     _taskDict[name].Timer.Dispose();
                     _taskDict.Remove(name);
-                    _logger.InfoFormat("Task stopped, name:{0}", name);
                 }
             }
         }
@@ -55,7 +53,7 @@ namespace ECommon.Scheduling
                 catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Task has exception, name:{0}, due:{1}, period:{2}", task.Name, task.DueTime, task.Period), ex);
+                    _logger.Error(string.Format("Task has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
                 }
                 finally
                 {
