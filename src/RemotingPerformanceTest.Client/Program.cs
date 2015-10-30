@@ -21,6 +21,7 @@ namespace RemotingPerformanceTest.Client
         static int _messageCount;
         static int _sentCount;
         static int _previousSentCount;
+        static long _calculateCount = 0;
         static byte[] _message;
         static ILogger _logger;
         static IScheduleService _scheduleService;
@@ -121,10 +122,20 @@ namespace RemotingPerformanceTest.Client
         }
         static void PrintThroughput()
         {
-            var totalSent = _sentCount;
-            var throughput = totalSent - _previousSentCount;
-            _previousSentCount = totalSent;
-            _logger.InfoFormat("Send message mode: {0}, currentTime: {1}, totalSent: {2}, throughput: {3}/s", _mode, DateTime.Now.ToLongTimeString(), totalSent, throughput);
+            var totalSentCount = _sentCount;
+            var throughput = totalSentCount - _previousSentCount;
+            _previousSentCount = totalSentCount;
+            if (throughput > 0)
+            {
+                _calculateCount++;
+            }
+
+            var average = 0L;
+            if (_calculateCount > 0)
+            {
+                average = totalSentCount / _calculateCount;
+            }
+            _logger.InfoFormat("Send message mode: {0}, totalSent: {1}, throughput: {2}/s, average: {3}", _mode, totalSentCount, throughput, average);
         }
 
         class ResponseHandler : IResponseHandler

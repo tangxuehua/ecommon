@@ -38,7 +38,6 @@ namespace ECommon.Socketing
         private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
         private readonly object _receivingLock = new object();
-        private readonly int _flowControlThreshold;
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
         private Action<ITcpConnection, byte[]> _messageArrivedHandler;
@@ -73,6 +72,10 @@ namespace ECommon.Socketing
         {
             get { return _setting; }
         }
+        public long PendingMessageCount
+        {
+            get { return _pendingMessageCount; }
+        }
 
         #endregion
 
@@ -86,7 +89,6 @@ namespace ECommon.Socketing
 
             _socket = socket;
             _setting = setting;
-            _flowControlThreshold = _setting.SendMessageFlowControlThreshold;
             _receiveDataBufferPool = receiveDataBufferPool;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
@@ -128,8 +130,6 @@ namespace ECommon.Socketing
             Interlocked.Increment(ref _pendingMessageCount);
 
             TrySend();
-
-            FlowControlIfNecessary();
         }
         public void Close()
         {
@@ -201,13 +201,6 @@ namespace ECommon.Socketing
             else
             {
                 CloseInternal(socketArgs.SocketError, "Socket send error.", null);
-            }
-        }
-        private void FlowControlIfNecessary()
-        {
-            if (_flowControlThreshold > 0 && _pendingMessageCount >= _flowControlThreshold)
-            {
-                Thread.Sleep(_setting.SendMessageFlowControlWaitMilliseconds);
             }
         }
         private SocketAsyncEventArgs GetSendSocketEventArgs()

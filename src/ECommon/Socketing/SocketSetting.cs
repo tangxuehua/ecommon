@@ -6,8 +6,9 @@
         public int ReceiveBufferSize = 1024 * 16;
 
         public int MaxSendPacketSize = 1024 * 64;
-        public int SendMessageFlowControlThreshold = 50000;
-        public int SendMessageFlowControlWaitMilliseconds = 5;
+        public int SendMessageFlowControlThreshold = 1000;
+        public int SendMessageFlowControlStepPercent = 1;
+        public int SendMessageFlowControlWaitMilliseconds = 1;
 
         public int ReceiveDataBufferSize = 1024 * 16;
         public int ReceiveDataBufferPoolSize = 50;

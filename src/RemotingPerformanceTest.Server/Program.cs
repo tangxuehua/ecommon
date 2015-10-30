@@ -32,6 +32,7 @@ namespace RemotingPerformanceTest.Server
             private readonly byte[] response = new byte[0];
             private long _previusHandledCount;
             private long _handledCount;
+            private long _calculateCount = 0;
 
             public RequestHandler()
             {
@@ -52,7 +53,18 @@ namespace RemotingPerformanceTest.Server
                 var throughput = totalHandledCount - _previusHandledCount;
                 _previusHandledCount = totalHandledCount;
 
-                _logger.InfoFormat("currentTime: {0}, totalReceived: {1}, throughput: {2}/s", DateTime.Now.ToLongTimeString(), totalHandledCount, throughput);
+                if (throughput > 0)
+                {
+                    _calculateCount++;
+                }
+
+                var average = 0L;
+                if (_calculateCount > 0)
+                {
+                    average = totalHandledCount / _calculateCount;
+                }
+
+                _logger.InfoFormat("totalReceived: {0}, throughput: {1}/s, average: {2}", totalHandledCount, throughput, average);
             }
         }
     }

@@ -24,6 +24,7 @@ namespace ECommon.Socketing
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
+        private readonly int _flowControlThreshold;
 
         #endregion
 
@@ -53,6 +54,7 @@ namespace ECommon.Socketing
             _waitConnectHandle = new ManualResetEvent(false);
             _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+            _flowControlThreshold = _setting.SendMessageFlowControlThreshold;
         }
 
         public ClientSocket RegisterConnectionEventListener(IConnectionEventListener listener)
@@ -84,6 +86,7 @@ namespace ECommon.Socketing
         public ClientSocket QueueMessage(byte[] message)
         {
             _connection.QueueMessage(message);
+            FlowControlIfNecessary();
             return this;
         }
         public ClientSocket Shutdown()
@@ -99,6 +102,18 @@ namespace ECommon.Socketing
             return this;
         }
 
+        private void FlowControlIfNecessary()
+        {
+            if (_flowControlThreshold > 0 && _connection.PendingMessageCount >= _flowControlThreshold)
+            {
+                var milliseconds = FlowControlUtil.CalculateFlowControlTimeMilliseconds(
+                    (int)_connection.PendingMessageCount,
+                    _flowControlThreshold,
+                    _setting.SendMessageFlowControlStepPercent,
+                    _setting.SendMessageFlowControlWaitMilliseconds);
+                Thread.Sleep(milliseconds);
+            }
+        }
         private void OnConnectAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             ProcessConnect(e);

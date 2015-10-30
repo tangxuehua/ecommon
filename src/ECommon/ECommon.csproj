@@ -95,6 +95,7 @@
     <Compile Include="Socketing\ServerSocket.cs" />
     <Compile Include="Socketing\SocketUtils.cs" />
     <Compile Include="Utilities\Ensure.cs" />
+    <Compile Include="Utilities\FlowControlUtil.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
     <Compile Include="Utilities\ObjectId.cs" />
