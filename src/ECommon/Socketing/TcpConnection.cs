@@ -110,8 +110,7 @@ namespace ECommon.Socketing
             _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
-
-            _framer = new LengthPrefixMessageFramer();
+            _framer = ObjectContainer.Resolve<IMessageFramer>();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
 
             TryReceive();

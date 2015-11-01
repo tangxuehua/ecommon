@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using ECommon.Components;
 using ECommon.Logging;
-using ECommon.Utilities;
 
 namespace ECommon.Socketing.Framing
 {
@@ -11,7 +10,6 @@ namespace ECommon.Socketing.Framing
         private static readonly ILogger _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(LengthPrefixMessageFramer).FullName);
 
         public const int HeaderLength = sizeof(Int32);
-        private readonly int _maxPackageSize;
         private Action<ArraySegment<byte>> _receivedHandler;
 
         private byte[] _messageBuffer;
@@ -19,19 +17,6 @@ namespace ECommon.Socketing.Framing
         private int _headerBytes = 0;
         private int _packageLength = 0;
 
-        public LengthPrefixMessageFramer(int maxPackageSize = 64 * 1024 * 1024)
-        {
-            Ensure.Positive(maxPackageSize, "maxPackageSize");
-            _maxPackageSize = maxPackageSize;
-        }
-
-        public void Reset()
-        {
-            _messageBuffer = null;
-            _headerBytes = 0;
-            _packageLength = 0;
-            _bufferIndex = 0;
-        }
         public IEnumerable<ArraySegment<byte>> FrameData(ArraySegment<byte> data)
         {
             var length = data.Count;
@@ -79,9 +64,9 @@ namespace ECommon.Socketing.Framing
                     ++_headerBytes;
                     if (_headerBytes == HeaderLength)
                     {
-                        if (_packageLength <= 0 || _packageLength > _maxPackageSize)
+                        if (_packageLength <= 0)
                         {
-                            throw new Exception(string.Format("Package size is out of bounds: {0} (max: {1}).", _packageLength, _maxPackageSize));
+                            throw new Exception(string.Format("Package length ({0}) is out of bounds.", _packageLength));
                         }
                         _messageBuffer = new byte[_packageLength];
                     }
@@ -96,7 +81,16 @@ namespace ECommon.Socketing.Framing
                     if (_bufferIndex == _packageLength)
                     {
                         if (_receivedHandler != null)
-                            _receivedHandler(new ArraySegment<byte>(_messageBuffer, 0, _bufferIndex));
+                        {
+                            try
+                            {
+                                _receivedHandler(new ArraySegment<byte>(_messageBuffer, 0, _bufferIndex));
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.Error("Handle received message fail.", ex);
+                            }
+                        }
                         _messageBuffer = null;
                         _headerBytes = 0;
                         _packageLength = 0;
