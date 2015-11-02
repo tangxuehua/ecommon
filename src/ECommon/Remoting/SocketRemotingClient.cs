@@ -33,6 +33,7 @@ namespace ECommon.Remoting
         private EndPoint _localEndPoint;
         private ClientSocket _clientSocket;
         private int _reconnecting = 0;
+        private bool _shutteddown = false;
 
         public bool IsConnected
         {
@@ -78,10 +79,12 @@ namespace ECommon.Remoting
         {
             StartClientSocket();
             StartScanTimeoutRequestTask();
+            _shutteddown = false;
             return this;
         }
         public void Shutdown()
         {
+            _shutteddown = true;
             StopReconnectServerTask();
             StopScanTimeoutRequestTask();
             ShutdownClientSocket();
@@ -216,7 +219,7 @@ namespace ECommon.Remoting
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);
                 }
-                _clientSocket.Start();
+                _clientSocket.Start(2000);
             }
             catch (Exception ex)
             {
@@ -286,11 +289,15 @@ namespace ECommon.Remoting
             }
             public void OnConnectionFailed(SocketError socketError)
             {
+                if (_remotingClient._shutteddown) return;
+
                 _remotingClient.ExitReconnecting();
                 _remotingClient.StartReconnectServerTask();
             }
             public void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
             {
+                if (_remotingClient._shutteddown) return;
+
                 _remotingClient.ExitReconnecting();
                 _remotingClient.StartReconnectServerTask();
             }

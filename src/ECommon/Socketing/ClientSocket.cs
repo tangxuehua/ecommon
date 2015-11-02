@@ -62,7 +62,7 @@ namespace ECommon.Socketing
             _connectionEventListeners.Add(listener);
             return this;
         }
-        public ClientSocket Start()
+        public ClientSocket Start(int waitMilliseconds = 5000)
         {
             var socketArgs = new SocketAsyncEventArgs();
             socketArgs.AcceptSocket = _socket;
@@ -79,7 +79,7 @@ namespace ECommon.Socketing
                 ProcessConnect(socketArgs);
             }
 
-            _waitConnectHandle.WaitOne(5000);
+            _waitConnectHandle.WaitOne(waitMilliseconds);
 
             return this;
         }

@@ -45,6 +45,7 @@ namespace ECommon.Socketing
         private int _sending;
         private int _receiving;
         private int _parsing;
+        private int _closing;
 
         private long _pendingMessageCount;
 
@@ -390,22 +391,25 @@ namespace ECommon.Socketing
 
         private void CloseInternal(SocketError socketError, string reason, Exception exception)
         {
-            SocketUtils.ShutdownSocket(_socket);
-            var isDisposedException = exception != null && exception is ObjectDisposedException;
-            if (!isDisposedException)
+            if (Interlocked.CompareExchange(ref _closing, 1, 0) == 0)
             {
-                _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}", RemotingEndPoint, socketError, reason);
-            }
-
-            if (_connectionClosedHandler != null)
-            {
-                try
+                SocketUtils.ShutdownSocket(_socket);
+                var isDisposedException = exception != null && exception is ObjectDisposedException;
+                if (!isDisposedException)
                 {
-                    _connectionClosedHandler(this, socketError);
+                    _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}", RemotingEndPoint, socketError, reason);
                 }
-                catch (Exception ex)
+
+                if (_connectionClosedHandler != null)
                 {
-                    _logger.Error("Call connection closed handler failed.", ex);
+                    try
+                    {
+                        _connectionClosedHandler(this, socketError);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error("Call connection closed handler failed.", ex);
+                    }
                 }
             }
         }
