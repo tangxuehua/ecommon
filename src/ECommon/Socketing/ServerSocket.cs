@@ -92,17 +92,27 @@ namespace ECommon.Socketing
         }
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            if (e.SocketError != SocketError.Success)
+            try
             {
-                SocketUtils.ShutdownSocket(e.AcceptSocket);
-                e.AcceptSocket = null;
-                return;
-            }
+                if (e.SocketError != SocketError.Success)
+                {
+                    SocketUtils.ShutdownSocket(e.AcceptSocket);
+                    e.AcceptSocket = null;
+                    return;
+                }
 
-            var acceptSocket = e.AcceptSocket;
-            e.AcceptSocket = null;
-            OnSocketAccepted(acceptSocket);
-            StartAccepting();
+                var acceptSocket = e.AcceptSocket;
+                e.AcceptSocket = null;
+                OnSocketAccepted(acceptSocket);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Process socket accept has exception.", ex);
+            }
+            finally
+            {
+                StartAccepting();
+            }
         }
 
         private void OnSocketAccepted(Socket socket)
