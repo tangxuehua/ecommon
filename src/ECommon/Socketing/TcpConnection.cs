@@ -210,13 +210,7 @@ namespace ECommon.Socketing
             {
                 return args;
             }
-
-            var spinWait = default(SpinWait);
-            while (!_sendSocketArgsStack.TryPop(out args))
-            {
-                spinWait.SpinOnce();
-            }
-            return args;
+            throw new Exception("No available socket send event args.");
         }
         private void ReturnSendSocketEventArgs(SocketAsyncEventArgs args)
         {
