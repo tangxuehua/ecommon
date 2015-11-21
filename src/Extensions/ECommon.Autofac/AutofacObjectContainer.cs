@@ -129,6 +129,24 @@ namespace ECommon.Autofac
         {
             return _container.Resolve(serviceType);
         }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <typeparam name="TService">The service type to resolve.</typeparam>
+        /// <param name="instance">The resulting component instance providing the service, or default(TService).</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public bool TryResolve<TService>(out TService instance) where TService : class
+        {
+            return _container.TryResolve<TService>(out instance);
+        }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <param name="serviceType">The service type to resolve.</param>
+        /// <param name="instance">The resulting component instance providing the service, or null.</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public bool TryResolve(Type serviceType, out object instance)
+        {
+            return _container.TryResolve(serviceType, out instance);
+        }
         /// <summary>Resolve a service.
         /// </summary>
         /// <typeparam name="TService">The service type.</typeparam>
@@ -146,6 +164,16 @@ namespace ECommon.Autofac
         public object ResolveNamed(string serviceName, Type serviceType)
         {
             return _container.ResolveNamed(serviceName, serviceType);
+        }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <param name="serviceName">The name of the service to resolve.</param>
+        /// <param name="serviceType">The type of the service to resolve.</param>
+        /// <param name="instance">The resulting component instance providing the service, or null.</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public bool TryResolveNamed(string serviceName, Type serviceType, out object instance)
+        {
+            return _container.TryResolveNamed(serviceName, serviceType, out instance);
         }
     }
 }

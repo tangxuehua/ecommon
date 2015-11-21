@@ -29,13 +29,13 @@ namespace ECommon.Socketing
         private readonly SocketSetting _setting;
         private readonly EndPoint _localEndPoint;
         private readonly EndPoint _remotingEndPoint;
+        private readonly SocketAsyncEventArgs _sendSocketArgs;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly IMessageFramer _framer;
         private readonly ILogger _logger;
         private readonly ConcurrentQueue<IEnumerable<ArraySegment<byte>>> _sendingQueue = new ConcurrentQueue<IEnumerable<ArraySegment<byte>>>();
         private readonly ConcurrentQueue<ReceivedData> _receiveQueue = new ConcurrentQueue<ReceivedData>();
-        private readonly ConcurrentStack<SocketAsyncEventArgs> _sendSocketArgsStack = new ConcurrentStack<SocketAsyncEventArgs>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
         private readonly object _receivingLock = new object();
 
@@ -96,16 +96,10 @@ namespace ECommon.Socketing
             _messageArrivedHandler = messageArrivedHandler;
             _connectionClosedHandler = connectionClosedHandler;
 
-            //Initialize send socket async event args.
-            for (var i = 0; i < 2; i++)
-            {
-                var sendSocketArgs = new SocketAsyncEventArgs();
-                sendSocketArgs.AcceptSocket = _socket;
-                sendSocketArgs.Completed += OnSendAsyncCompleted;
-                _sendSocketArgsStack.Push(sendSocketArgs);
-            }
+            _sendSocketArgs = new SocketAsyncEventArgs();
+            _sendSocketArgs.AcceptSocket = _socket;
+            _sendSocketArgs.Completed += OnSendAsyncCompleted;
 
-            //Initialize receive socket async event args.
             _receiveSocketArgs = new SocketAsyncEventArgs();
             _receiveSocketArgs.AcceptSocket = socket;
             _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
@@ -140,6 +134,7 @@ namespace ECommon.Socketing
 
         private void TrySend()
         {
+            if (_closing == 1) return;
             if (!EnterSending()) return;
 
             _sendingStream.SetLength(0);
@@ -170,12 +165,11 @@ namespace ECommon.Socketing
 
             try
             {
-                var sendSocktArgs = GetSendSocketEventArgs();
-                sendSocktArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
-                var firedAsync = sendSocktArgs.AcceptSocket.SendAsync(sendSocktArgs);
+                _sendSocketArgs.SetBuffer(_sendingStream.GetBuffer(), 0, (int)_sendingStream.Length);
+                var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
                 if (!firedAsync)
                 {
-                    ProcessSend(sendSocktArgs);
+                    ProcessSend(_sendSocketArgs);
                 }
             }
             catch (Exception ex)
@@ -186,12 +180,12 @@ namespace ECommon.Socketing
         }
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
+            if (_closing == 1) return;
             if (socketArgs.Buffer != null)
             {
                 socketArgs.SetBuffer(null, 0, 0);
             }
 
-            ReturnSendSocketEventArgs(socketArgs);
             ExitSending();
 
             if (socketArgs.SocketError == SocketError.Success)
@@ -202,19 +196,6 @@ namespace ECommon.Socketing
             {
                 CloseInternal(socketArgs.SocketError, "Socket send error.", null);
             }
-        }
-        private SocketAsyncEventArgs GetSendSocketEventArgs()
-        {
-            SocketAsyncEventArgs args;
-            if (_sendSocketArgsStack.TryPop(out args))
-            {
-                return args;
-            }
-            throw new Exception("No available socket send event args.");
-        }
-        private void ReturnSendSocketEventArgs(SocketAsyncEventArgs args)
-        {
-            _sendSocketArgsStack.Push(args);
         }
         private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {

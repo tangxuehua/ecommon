@@ -30,7 +30,7 @@ namespace ECommon.Dapper
             var properties = GetProperties(obj);
             var columns = string.Join(",", properties);
             var values = string.Join(",", properties.Select(p => "@" + p));
-            var sql = string.Format("insert into [{0}] ({1}) values ({2}) select cast(scope_identity() as bigint)", table, columns, values);
+            var sql = string.Format("insert into {0} ({1}) values ({2}) select cast(scope_identity() as bigint)", table, columns, values);
 
             return connection.ExecuteScalar<long>(sql, obj, transaction, commandTimeout);
         }
@@ -48,7 +48,7 @@ namespace ECommon.Dapper
             var properties = GetProperties(obj);
             var columns = string.Join(",", properties);
             var values = string.Join(",", properties.Select(p => "@" + p));
-            var sql = string.Format("insert into [{0}] ({1}) values ({2}) select cast(scope_identity() as bigint)", table, columns, values);
+            var sql = string.Format("insert into {0} ({1}) values ({2}) select cast(scope_identity() as bigint)", table, columns, values);
 
             return connection.ExecuteScalarAsync<long>(sql, obj, transaction, commandTimeout);
         }
@@ -81,7 +81,7 @@ namespace ECommon.Dapper
                 whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @w_" + p));
             }
 
-            var sql = string.Format("update [{0}] set {1}{2}", table, updateFields, whereFields);
+            var sql = string.Format("update {0} set {1}{2}", table, updateFields, whereFields);
 
             var parameters = new DynamicParameters(data);
             var expandoObject = new ExpandoObject() as IDictionary<string, object>;
@@ -118,7 +118,7 @@ namespace ECommon.Dapper
                 whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @w_" + p));
             }
 
-            var sql = string.Format("update [{0}] set {1}{2}", table, updateFields, whereFields);
+            var sql = string.Format("update {0} set {1}{2}", table, updateFields, whereFields);
 
             var parameters = new DynamicParameters(data);
             var expandoObject = new ExpandoObject() as IDictionary<string, object>;
@@ -146,7 +146,7 @@ namespace ECommon.Dapper
                 whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @" + p));
             }
 
-            var sql = string.Format("delete from [{0}]{1}", table, whereFields);
+            var sql = string.Format("delete from {0}{1}", table, whereFields);
 
             return connection.Execute(sql, conditionObj, transaction, commandTimeout);
         }
@@ -168,7 +168,7 @@ namespace ECommon.Dapper
                 whereFields = " where " + string.Join(" and ", whereProperties.Select(p => p + " = @" + p));
             }
 
-            var sql = string.Format("delete from [{0}]{1}", table, whereFields);
+            var sql = string.Format("delete from {0}{1}", table, whereFields);
 
             return connection.ExecuteAsync(sql, conditionObj, transaction, commandTimeout);
         }
@@ -356,13 +356,13 @@ namespace ECommon.Dapper
             var properties = GetProperties(conditionObj);
             if (properties.Count == 0)
             {
-                return string.Format("SELECT {1} FROM [{0}]", table, selectPart);
+                return string.Format("SELECT {1} FROM {0}", table, selectPart);
             }
 
             var separator = isOr ? " OR " : " AND ";
             var wherePart = string.Join(separator, properties.Select(p => p + " = @" + p));
 
-            return string.Format("SELECT {2} FROM [{0}] WHERE {1}", table, wherePart, selectPart);
+            return string.Format("SELECT {2} FROM {0} WHERE {1}", table, wherePart, selectPart);
         }
         private static List<string> GetProperties(object obj)
         {

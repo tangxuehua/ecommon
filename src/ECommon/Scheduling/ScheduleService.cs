@@ -50,14 +50,21 @@ namespace ECommon.Scheduling
                     task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
                     task.Action();
                 }
-                catch (ObjectDisposedException) { }
+                catch (ObjectDisposedException ex)
+                {
+                    _logger.Error(string.Format("Task has object disposed exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                }
                 catch (Exception ex)
                 {
                     _logger.Error(string.Format("Task has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
                 }
                 finally
                 {
-                    try { task.Timer.Change(task.Period, task.Period); } catch { }
+                    try { task.Timer.Change(task.Period, task.Period); }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(string.Format("Timer change has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                    }
                 }
             }
         }

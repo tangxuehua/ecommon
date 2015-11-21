@@ -77,6 +77,24 @@ namespace ECommon.Components
         {
             return Current.Resolve(serviceType);
         }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <typeparam name="TService">The service type to resolve.</typeparam>
+        /// <param name="instance">The resulting component instance providing the service, or default(TService).</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public static bool TryResolve<TService>(out TService instance) where TService : class
+        {
+            return Current.TryResolve<TService>(out instance);
+        }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <param name="serviceType">The service type to resolve.</param>
+        /// <param name="instance">The resulting component instance providing the service, or null.</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public static bool TryResolve(Type serviceType, out object instance)
+        {
+            return Current.TryResolve(serviceType, out instance);
+        }
         /// <summary>Resolve a service.
         /// </summary>
         /// <typeparam name="TService">The service type.</typeparam>
@@ -94,6 +112,16 @@ namespace ECommon.Components
         public static object ResolveNamed(string serviceName, Type serviceType)
         {
             return Current.ResolveNamed(serviceName, serviceType);
+        }
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <param name="serviceName">The name of the service to resolve.</param>
+        /// <param name="serviceType">The type of the service to resolve.</param>
+        /// <param name="instance">The resulting component instance providing the service, or null.</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public static bool TryResolveNamed(string serviceName, Type serviceType, out object instance)
+        {
+            return Current.TryResolveNamed(serviceName, serviceType, out instance);
         }
     }
 }

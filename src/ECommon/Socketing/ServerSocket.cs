@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using ECommon.Components;
 using ECommon.Logging;
@@ -83,7 +84,9 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Info("Socket accept error", ex);
+                _logger.Info("Socket accept has exception, try to start accepting one second later.", ex);
+                Thread.Sleep(1000);
+                StartAccepting();
             }
         }
         private void AcceptCompleted(object sender, SocketAsyncEventArgs e)
@@ -94,16 +97,17 @@ namespace ECommon.Socketing
         {
             try
             {
-                if (e.SocketError != SocketError.Success)
+                if (e.SocketError == SocketError.Success)
+                {
+                    var acceptSocket = e.AcceptSocket;
+                    e.AcceptSocket = null;
+                    OnSocketAccepted(acceptSocket);
+                }
+                else
                 {
                     SocketUtils.ShutdownSocket(e.AcceptSocket);
                     e.AcceptSocket = null;
-                    return;
                 }
-
-                var acceptSocket = e.AcceptSocket;
-                e.AcceptSocket = null;
-                OnSocketAccepted(acceptSocket);
             }
             catch (Exception ex)
             {
