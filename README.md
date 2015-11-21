@@ -1,4 +1,4 @@
 ecommon
 =======
 
-A common infrastructure library.
+A common infrastructure library£¡
