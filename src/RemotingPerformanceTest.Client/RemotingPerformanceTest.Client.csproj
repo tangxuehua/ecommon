@@ -60,20 +60,11 @@
     <None Include="log4net.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ECommon\ECommon.csproj">
       <Project>{d60f17ce-ff99-42cd-af71-97c157b17af3}</Project>
       <Name>ECommon</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Extensions\ECommon.Autofac\ECommon.Autofac.csproj">
-      <Project>{1c523165-5cc7-497a-99d0-9e59e3110c54}</Project>
-      <Name>ECommon.Autofac</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Extensions\ECommon.Log4Net\ECommon.Log4Net.csproj">
-      <Project>{c69cf480-4b6b-4006-8c17-43054c1ebe1c}</Project>
-      <Name>ECommon.Log4Net</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

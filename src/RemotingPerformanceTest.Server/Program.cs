@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Threading;
-using ECommon.Autofac;
 using ECommon.Components;
-using ECommon.Log4Net;
+using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
 using ECommon.Scheduling;
