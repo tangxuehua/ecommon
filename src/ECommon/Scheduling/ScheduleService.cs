@@ -22,7 +22,7 @@ namespace ECommon.Scheduling
             {
                 if (_taskDict.ContainsKey(name)) return;
                 var timer = new Timer(TaskCallback, name, Timeout.Infinite, Timeout.Infinite);
-                _taskDict.Add(name, new TimerBasedTask { Name = name, Action = action, Timer = timer, DueTime = dueTime, Period = period });
+                _taskDict.Add(name, new TimerBasedTask { Name = name, Action = action, Timer = timer, DueTime = dueTime, Period = period, Stopped = false });
                 timer.Change(dueTime, period);
             }
         }
@@ -32,7 +32,9 @@ namespace ECommon.Scheduling
             {
                 if (_taskDict.ContainsKey(name))
                 {
-                    _taskDict[name].Timer.Dispose();
+                    var task = _taskDict[name];
+                    task.Stopped = true;
+                    task.Timer.Dispose();
                     _taskDict.Remove(name);
                 }
             }
@@ -47,8 +49,11 @@ namespace ECommon.Scheduling
             {
                 try
                 {
-                    task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
-                    task.Action();
+                    if (!task.Stopped)
+                    {
+                        task.Timer.Change(Timeout.Infinite, Timeout.Infinite);
+                        task.Action();
+                    }
                 }
                 catch (ObjectDisposedException) { }
                 catch (Exception ex)
@@ -57,7 +62,14 @@ namespace ECommon.Scheduling
                 }
                 finally
                 {
-                    try { task.Timer.Change(task.Period, task.Period); }
+                    try
+                    {
+                        if (!task.Stopped)
+                        {
+                            task.Timer.Change(task.Period, task.Period);
+                        }
+                    }
+                    catch (ObjectDisposedException) { }
                     catch (Exception ex)
                     {
                         _logger.Error(string.Format("Timer change has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
@@ -73,6 +85,7 @@ namespace ECommon.Scheduling
             public Timer Timer;
             public int DueTime;
             public int Period;
+            public bool Stopped;
         }
     }
 }
