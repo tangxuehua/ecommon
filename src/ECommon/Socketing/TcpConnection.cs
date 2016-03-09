@@ -269,7 +269,18 @@ namespace ECommon.Socketing
                 socketArgs.SetBuffer(null, 0, 0);
             }
 
-            TryParsingReceivedData();
+            try
+            {
+                TryParsingReceivedData();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Parsing received data error.", ex);
+                ReturnReceivingSocketBuffer();
+                CloseInternal(SocketError.Shutdown, "Parsing received data error.", ex);
+                return;
+            }
+
             ExitReceiving();
             TryReceive();
         }
@@ -295,10 +306,6 @@ namespace ECommon.Socketing
                 {
                     _receiveDataBufferPool.Return(dataList[i].Buf.Array);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Parsing received data error.", ex);
             }
             finally
             {

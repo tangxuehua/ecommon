@@ -74,7 +74,20 @@ namespace ECommon.Socketing.Framing
                 else
                 {
                     int copyCnt = Math.Min(bytes.Count + bytes.Offset - i, _packageLength - _bufferIndex);
-                    Buffer.BlockCopy(bytes.Array, i, _messageBuffer, _bufferIndex, copyCnt);
+                    try
+                    {
+                        Buffer.BlockCopy(bytes.Array, i, _messageBuffer, _bufferIndex, copyCnt);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(string.Format("Parse message buffer failed, _headerLength: {0}, _packageLength: {1}, _bufferIndex: {2}, copyCnt: {3}, _messageBuffer is null: {4}",
+                            _headerBytes,
+                            _packageLength,
+                            _bufferIndex,
+                            copyCnt,
+                            _messageBuffer == null), ex);
+                        throw;
+                    }
                     _bufferIndex += copyCnt;
                     i += copyCnt - 1;
 
