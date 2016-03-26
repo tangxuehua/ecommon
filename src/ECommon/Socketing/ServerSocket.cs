@@ -84,7 +84,10 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Info("Socket accept has exception, try to start accepting one second later.", ex);
+                if (!(ex is ObjectDisposedException))
+                {
+                    _logger.Info("Socket accept has exception, try to start accepting one second later.", ex);
+                }
                 Thread.Sleep(1000);
                 StartAccepting();
             }
@@ -109,6 +112,7 @@ namespace ECommon.Socketing
                     e.AcceptSocket = null;
                 }
             }
+            catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
                 _logger.Error("Process socket accept has exception.", ex);
