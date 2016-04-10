@@ -18,10 +18,6 @@ namespace ECommon.Configurations
 
         public static Configuration Create()
         {
-            if (Instance != null)
-            {
-                throw new Exception("Could not create configuration instance twice.");
-            }
             Instance = new Configuration();
             return Instance;
         }
