@@ -113,8 +113,6 @@
     <Compile Include="Socketing\BufferManagement\IPoolItemCreator.cs" />
     <Compile Include="Socketing\SocketSetting.cs" />
     <Compile Include="Socketing\IConnectionEventListener.cs" />
-    <Compile Include="Socketing\ISocketServerEventListener.cs" />
-    <Compile Include="Socketing\ISocketClientEventListener.cs" />
     <Compile Include="Socketing\TcpConnection.cs" />
     <Compile Include="Socketing\ClientSocket.cs" />
     <Compile Include="Socketing\Framing\IMessageFramer.cs" />
