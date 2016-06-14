@@ -34,6 +34,7 @@ namespace ECommon.Remoting
         private ClientSocket _clientSocket;
         private int _reconnecting = 0;
         private bool _shutteddown = false;
+        private bool _started = false;
 
         public bool IsConnected
         {
@@ -77,9 +78,12 @@ namespace ECommon.Remoting
         }
         public SocketRemotingClient Start()
         {
+            if (_started) return this;
+
             StartClientSocket();
             StartScanTimeoutRequestTask();
             _shutteddown = false;
+            _started = true;
             return this;
         }
         public void Shutdown()
