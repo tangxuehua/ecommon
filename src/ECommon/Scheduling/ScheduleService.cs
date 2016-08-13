@@ -58,7 +58,10 @@ namespace ECommon.Scheduling
                 catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Task has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                    if (_logger != null)
+                    {
+                        _logger.Error(string.Format("Task has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                    }
                 }
                 finally
                 {
@@ -72,7 +75,10 @@ namespace ECommon.Scheduling
                     catch (ObjectDisposedException) { }
                     catch (Exception ex)
                     {
-                        _logger.Error(string.Format("Timer change has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                        if (_logger != null)
+                        {
+                            _logger.Error(string.Format("Timer change has exception, name: {0}, due: {1}, period: {2}", task.Name, task.DueTime, task.Period), ex);
+                        }
                     }
                 }
             }
