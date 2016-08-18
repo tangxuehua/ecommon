@@ -53,10 +53,6 @@
       <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="protobuf-net, Version=2.0.0.668, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
-      <HintPath>..\packages\protobuf-net.2.0.0.668\lib\net40\protobuf-net.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -79,7 +75,6 @@
     <Compile Include="IO\AsyncTaskResult.cs" />
     <Compile Include="IO\IOException.cs" />
     <Compile Include="IO\IOHelper.cs" />
-    <Compile Include="ThirdParty\ProtocolBuf\ProtocolBufSerializer.cs" />
     <Compile Include="Remoting\IResponseHandler.cs" />
     <Compile Include="Remoting\Exceptions\ResponseFutureAddFailedException.cs" />
     <Compile Include="Remoting\Exceptions\RemotingRequestException.cs" />

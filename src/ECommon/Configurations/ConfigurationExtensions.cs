@@ -4,7 +4,6 @@ using ECommon.Components;
 using ECommon.JsonNet;
 using ECommon.Log4Net;
 using ECommon.Logging;
-using ECommon.ProtocolBuf;
 using ECommon.Serializing;
 
 namespace ECommon.Configurations
@@ -49,14 +48,6 @@ namespace ECommon.Configurations
         public static Configuration UseLog4Net(this Configuration configuration, string configFile)
         {
             configuration.SetDefault<ILoggerFactory, Log4NetLoggerFactory>(new Log4NetLoggerFactory(configFile));
-            return configuration;
-        }
-        /// <summary>Use ProtocolBufSerializer as the binary serializer.
-        /// </summary>
-        /// <returns></returns>
-        public static Configuration UseProtoBufSerializer(this Configuration configuration)
-        {
-            configuration.SetDefault<IBinarySerializer, ProtocolBufSerializer>(new ProtocolBufSerializer());
             return configuration;
         }
     }
