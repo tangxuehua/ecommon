@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Threading.Tasks;
 using ECommon.Logging;
-using ECommon.Scheduling;
 
 namespace ECommon.Utilities
 {
@@ -11,11 +11,10 @@ namespace ECommon.Utilities
         private int _requestsWriteThreshold;
         private ConcurrentQueue<TMessage> _inputQueue;
         private ConcurrentQueue<TMessage> _processQueue;
-        private SpinWait _spinWait = default(SpinWait);
-        private Worker _messageWorker;
         private Action<TMessage> _handleMessageAction;
         private readonly string _name;
         private readonly ILogger _logger;
+        private int _isProcesingMessage;
 
         public BufferQueue(string name, int requestsWriteThreshold, Action<TMessage> handleMessageAction, ILogger logger)
         {
@@ -24,21 +23,13 @@ namespace ECommon.Utilities
             _handleMessageAction = handleMessageAction;
             _inputQueue = new ConcurrentQueue<TMessage>();
             _processQueue = new ConcurrentQueue<TMessage>();
-            _messageWorker = new Worker(name + ".ProcessMessages", ProcessMessages);
             _logger = logger;
         }
 
-        public void Start()
-        {
-            _messageWorker.Start();
-        }
-        public void Stop()
-        {
-            _messageWorker.Stop();
-        }
         public void EnqueueMessage(TMessage message)
         {
             _inputQueue.Enqueue(message);
+            TryProcessMessages();
 
             if (_inputQueue.Count >= _requestsWriteThreshold)
             {
@@ -46,36 +37,58 @@ namespace ECommon.Utilities
             }
         }
 
-        private void ProcessMessages()
+        private void TryProcessMessages()
         {
-            if (_processQueue.Count == 0 && _inputQueue.Count > 0)
+            if (Interlocked.CompareExchange(ref _isProcesingMessage, 1, 0) == 0)
             {
-                SwapInputQueue();
-            }
-            if (_processQueue.Count > 0)
-            {
-                TMessage message;
-                while (_processQueue.TryDequeue(out message))
+                Task.Factory.StartNew(() =>
                 {
                     try
                     {
-                        _handleMessageAction(message);
-                    }
-                    catch (Exception ex)
-                    {
-                        var errorMessage = _name + " process message has exception.";
-                        if (_logger != null)
+                        if (_processQueue.Count == 0 && _inputQueue.Count > 0)
                         {
-                            _logger.Error(errorMessage, ex);
+                            SwapInputQueue();
                         }
-                        Thread.Sleep(1);
+
+                        if (_processQueue.Count > 0)
+                        {
+                            var count = 0;
+                            TMessage message;
+                            while (_processQueue.TryDequeue(out message))
+                            {
+                                try
+                                {
+                                    _handleMessageAction(message);
+                                }
+                                catch (Exception ex)
+                                {
+                                    var errorMessage = _name + " process message has exception.";
+                                    if (_logger != null)
+                                    {
+                                        _logger.Error(errorMessage, ex);
+                                    }
+                                }
+                                finally
+                                {
+                                    count++;
+                                }
+                            }
+                            if (_logger.IsDebugEnabled)
+                            {
+                                _logger.DebugFormat("BufferQueue[name={0}], batch process {1} messages.", _name, count);
+                            }
+                        }
                     }
-                }
-            }
-            else
-            {
-                _spinWait.SpinOnce();
-            }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _isProcesingMessage, 0);
+                        if (_inputQueue.Count > 0)
+                        {
+                            TryProcessMessages();
+                        }
+                    }
+                });   
+            }   
         }
         private void SwapInputQueue()
         {
