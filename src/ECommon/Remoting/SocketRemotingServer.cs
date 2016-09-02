@@ -18,6 +18,11 @@ namespace ECommon.Remoting
         private readonly SocketSetting _setting;
         private bool _isShuttingdown = false;
 
+        public IBufferPool BufferPool
+        {
+            get { return _receiveDataBufferPool; }
+        }
+
         public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
         public SocketRemotingServer(string name, IPEndPoint listeningEndPoint, SocketSetting setting = null)
         {

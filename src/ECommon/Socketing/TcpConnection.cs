@@ -375,12 +375,41 @@ namespace ECommon.Socketing
         {
             if (Interlocked.CompareExchange(ref _closing, 1, 0) == 0)
             {
+                try
+                {
+                    if (_receiveSocketArgs.Buffer != null)
+                    {
+                        _receiveDataBufferPool.Return(_receiveSocketArgs.Buffer);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Return receiving socket event buffer failed.", ex);
+                }
+
                 SocketUtils.ShutdownSocket(_socket);
                 var isDisposedException = exception != null && exception is ObjectDisposedException;
                 if (!isDisposedException)
                 {
                     _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}", RemotingEndPoint, socketError, reason);
                 }
+
+                Helper.EatException(() =>
+                {
+                    if (_sendSocketArgs != null)
+                    {
+                        _sendSocketArgs.Completed -= OnSendAsyncCompleted;
+                        _sendSocketArgs.AcceptSocket = null;
+                        _sendSocketArgs.Dispose();
+                    }
+                    if (_receiveSocketArgs != null)
+                    {
+                        _receiveSocketArgs.Completed -= OnReceiveAsyncCompleted;
+                        _receiveSocketArgs.AcceptSocket = null;
+                        _receiveSocketArgs.SetBuffer(null, 0, 0);
+                        _receiveSocketArgs.Dispose();
+                    }
+                });
 
                 if (_connectionClosedHandler != null)
                 {

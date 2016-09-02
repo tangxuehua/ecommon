@@ -120,6 +120,7 @@ namespace ECommon.Socketing
         }
         private void ProcessConnect(SocketAsyncEventArgs e)
         {
+            e.Completed -= OnConnectAsyncCompleted;
             e.AcceptSocket = null;
 
             if (e.SocketError != SocketError.Success)
