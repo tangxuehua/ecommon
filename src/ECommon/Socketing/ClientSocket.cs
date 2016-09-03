@@ -94,10 +94,12 @@ namespace ECommon.Socketing
             if (_connection != null)
             {
                 _connection.Close();
+                _connection = null;
             }
             else
             {
                 SocketUtils.ShutdownSocket(_socket);
+                _socket = null;
             }
             return this;
         }
@@ -122,6 +124,8 @@ namespace ECommon.Socketing
         {
             e.Completed -= OnConnectAsyncCompleted;
             e.AcceptSocket = null;
+            e.RemoteEndPoint = null;
+            e.Dispose();
 
             if (e.SocketError != SocketError.Success)
             {

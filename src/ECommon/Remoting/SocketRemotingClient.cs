@@ -238,6 +238,7 @@ namespace ECommon.Remoting
         private void ShutdownClientSocket()
         {
             _clientSocket.Shutdown();
+            _clientSocket = null;
         }
         private void StartScanTimeoutRequestTask()
         {
