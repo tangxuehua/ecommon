@@ -37,7 +37,6 @@ namespace ECommon.Socketing
         private readonly ConcurrentQueue<IEnumerable<ArraySegment<byte>>> _sendingQueue = new ConcurrentQueue<IEnumerable<ArraySegment<byte>>>();
         private readonly ConcurrentQueue<ReceivedData> _receiveQueue = new ConcurrentQueue<ReceivedData>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
-        private readonly object _receivingLock = new object();
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
         private Action<ITcpConnection, byte[]> _messageArrivedHandler;
@@ -226,29 +225,26 @@ namespace ECommon.Socketing
                 return;
             }
 
-            lock (_receivingLock)
+            _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
+            if (_receiveSocketArgs.Buffer == null)
             {
-                _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
-                if (_receiveSocketArgs.Buffer == null)
-                {
-                    CloseInternal(SocketError.Shutdown, "Socket receive set buffer failed.", null);
-                    ExitReceiving();
-                    return;
-                }
+                CloseInternal(SocketError.Shutdown, "Socket receive set buffer failed.", null);
+                ExitReceiving();
+                return;
+            }
 
-                try
+            try
+            {
+                bool firedAsync = _receiveSocketArgs.AcceptSocket.ReceiveAsync(_receiveSocketArgs);
+                if (!firedAsync)
                 {
-                    bool firedAsync = _receiveSocketArgs.AcceptSocket.ReceiveAsync(_receiveSocketArgs);
-                    if (!firedAsync)
-                    {
-                        ProcessReceive(_receiveSocketArgs);
-                    }
+                    ProcessReceive(_receiveSocketArgs);
                 }
-                catch (Exception ex)
-                {
-                    CloseInternal(SocketError.Shutdown, "Socket receive error, errorMessage:" + ex.Message, ex);
-                    ExitReceiving();
-                }
+            }
+            catch (Exception ex)
+            {
+                CloseInternal(SocketError.Shutdown, "Socket receive error, errorMessage:" + ex.Message, ex);
+                ExitReceiving();
             }
         }
         private void OnReceiveAsyncCompleted(object sender, SocketAsyncEventArgs e)
@@ -263,12 +259,9 @@ namespace ECommon.Socketing
                 return;
             }
 
-            lock (_receivingLock)
-            {
-                var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
-                _receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
-                socketArgs.SetBuffer(null, 0, 0);
-            }
+            var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
+            _receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
+            socketArgs.SetBuffer(null, 0, 0);
 
             try
             {
@@ -276,7 +269,6 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Error("Parsing received data error.", ex);
                 CloseInternal(SocketError.Shutdown, "Parsing received data error.", ex);
                 return;
             }
@@ -360,19 +352,16 @@ namespace ECommon.Socketing
         {
             if (Interlocked.CompareExchange(ref _closing, 1, 0) == 0)
             {
-                lock (_receivingLock)
+                try
                 {
-                    try
+                    if (_receiveSocketArgs.Buffer != null)
                     {
-                        if (_receiveSocketArgs.Buffer != null)
-                        {
-                            _receiveDataBufferPool.Return(_receiveSocketArgs.Buffer);
-                        }
+                        _receiveDataBufferPool.Return(_receiveSocketArgs.Buffer);
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.Error("Return receiving socket event buffer failed.", ex);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Return receiving socket event buffer failed.", ex);
                 }
 
                 Helper.EatException(() =>
@@ -395,7 +384,7 @@ namespace ECommon.Socketing
                 var isDisposedException = exception != null && exception is ObjectDisposedException;
                 if (!isDisposedException)
                 {
-                    _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}", RemotingEndPoint, socketError, reason);
+                    _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception);
                 }
                 _socket = null;
 
