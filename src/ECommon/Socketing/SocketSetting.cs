@@ -10,6 +10,9 @@
         public int SendMessageFlowControlStepPercent = 1;
         public int SendMessageFlowControlWaitMilliseconds = 1;
 
+        public int ReconnectToServerInterval = 1000;
+        public int ScanTimeoutRequestInterval = 1000;
+
         public int ReceiveDataBufferSize = 1024 * 16;
         public int ReceiveDataBufferPoolSize = 50;
     }

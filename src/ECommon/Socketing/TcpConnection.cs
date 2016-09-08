@@ -54,7 +54,7 @@ namespace ECommon.Socketing
 
         public bool IsConnected
         {
-            get { return _socket.Connected; }
+            get { return _socket != null && _socket.Connected; }
         }
         public Socket Socket
         {

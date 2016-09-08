@@ -30,11 +30,11 @@ namespace ECommon.Socketing
 
         public bool IsConnected
         {
-            get { return _socket.Connected; }
+            get { return _connection != null && _connection.IsConnected; }
         }
-        public Socket Socket
+        public TcpConnection Connection
         {
-            get { return _socket; }
+            get { return _connection; }
         }
 
         public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
@@ -132,6 +132,7 @@ namespace ECommon.Socketing
                 SocketUtils.ShutdownSocket(_socket);
                 _logger.InfoFormat("Socket connect failed, socketError:{0}", e.SocketError);
                 OnConnectionFailed(e.SocketError);
+                _waitConnectHandle.Set();
                 return;
             }
 

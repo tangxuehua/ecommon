@@ -38,11 +38,23 @@ namespace ECommon.Remoting
 
         public bool IsConnected
         {
-            get { return _clientSocket.IsConnected; }
+            get { return _clientSocket != null &&_clientSocket.IsConnected; }
         }
         public EndPoint LocalEndPoint
         {
             get { return _localEndPoint; }
+        }
+        public EndPoint ServerEndPoint
+        {
+            get { return _serverEndPoint; }
+        }
+        public ClientSocket ClientSocket
+        {
+            get { return _clientSocket; }
+        }
+        public IBufferPool BufferPool
+        {
+            get { return _receiveDataBufferPool; }
         }
 
         public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
@@ -223,7 +235,7 @@ namespace ECommon.Remoting
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);
                 }
-                _clientSocket.Start(2000);
+                _clientSocket.Start();
             }
             catch (Exception ex)
             {
@@ -238,11 +250,10 @@ namespace ECommon.Remoting
         private void ShutdownClientSocket()
         {
             _clientSocket.Shutdown();
-            _clientSocket = null;
         }
         private void StartScanTimeoutRequestTask()
         {
-            _scheduleService.StartTask(string.Format("{0}.ScanTimeoutRequest", this.GetType().Name), ScanTimeoutRequest, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ScanTimeoutRequest", this.GetType().Name), ScanTimeoutRequest, 1000, _setting.ScanTimeoutRequestInterval);
         }
         private void StopScanTimeoutRequestTask()
         {
@@ -250,7 +261,7 @@ namespace ECommon.Remoting
         }
         private void StartReconnectServerTask()
         {
-            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", this.GetType().Name), ReconnectServer, 1000, 1000);
+            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", this.GetType().Name), ReconnectServer, 1000, _setting.ReconnectToServerInterval);
         }
         private void StopReconnectServerTask()
         {
@@ -258,7 +269,7 @@ namespace ECommon.Remoting
         }
         private void EnsureClientStatus()
         {
-            if (!_clientSocket.IsConnected)
+            if (_clientSocket == null || !_clientSocket.IsConnected)
             {
                 throw new RemotingServerUnAvailableException(_serverEndPoint);
             }
