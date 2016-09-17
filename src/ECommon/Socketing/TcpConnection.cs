@@ -225,16 +225,16 @@ namespace ECommon.Socketing
                 return;
             }
 
-            _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
-            if (_receiveSocketArgs.Buffer == null)
-            {
-                CloseInternal(SocketError.Shutdown, "Socket receive set buffer failed.", null);
-                ExitReceiving();
-                return;
-            }
-
             try
             {
+                _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
+                if (_receiveSocketArgs.Buffer == null)
+                {
+                    CloseInternal(SocketError.Shutdown, "Socket receive set buffer failed.", null);
+                    ExitReceiving();
+                    return;
+                }
+
                 bool firedAsync = _receiveSocketArgs.AcceptSocket.ReceiveAsync(_receiveSocketArgs);
                 if (!firedAsync)
                 {
@@ -259,12 +259,12 @@ namespace ECommon.Socketing
                 return;
             }
 
-            var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
-            _receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
-            socketArgs.SetBuffer(null, 0, 0);
-
             try
             {
+                var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
+                _receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
+                socketArgs.SetBuffer(null, 0, 0);
+
                 TryParsingReceivedData();
             }
             catch (Exception ex)
