@@ -83,7 +83,6 @@
     <Compile Include="Remoting\Exceptions\RemotingTimeoutException.cs" />
     <Compile Include="Remoting\IRequestHandler.cs" />
     <Compile Include="Remoting\IRequestHandlerContext.cs" />
-    <Compile Include="Remoting\RemotingMessage.cs" />
     <Compile Include="Remoting\RemotingRequest.cs" />
     <Compile Include="Remoting\RemotingResponse.cs" />
     <Compile Include="Remoting\RemotingUtil.cs" />
@@ -116,10 +115,15 @@
     <Compile Include="Socketing\ServerSocket.cs" />
     <Compile Include="Socketing\SocketUtils.cs" />
     <Compile Include="Utilities\BufferQueue.cs" />
+    <Compile Include="Utilities\ByteUtil.cs" />
+    <Compile Include="Utilities\ConsoleEventHandlerService.cs" />
+    <Compile Include="Utilities\DefaultPerformanceService.cs" />
+    <Compile Include="Extensions\EndPointExtensions.cs" />
     <Compile Include="Utilities\Ensure.cs" />
     <Compile Include="Utilities\FlowControlUtil.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\DelegateFactory.cs" />
+    <Compile Include="Utilities\IPerformanceService.cs" />
     <Compile Include="Utilities\ObjectId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scheduling\IScheduleService.cs" />
@@ -127,13 +131,16 @@
     <Compile Include="Scheduling\Worker.cs" />
     <Compile Include="Extensions\ReaderWriterLockSlimExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Extensions\RemotingClientUtils.cs" />
     <Compile Include="Utilities\TypeUtils.cs" />
     <Compile Include="Utilities\ObjectUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Storage\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

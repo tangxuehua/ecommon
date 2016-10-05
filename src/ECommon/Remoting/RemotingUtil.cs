@@ -1,5 +1,6 @@
 ﻿using System;
-using System.IO;
+using System.Collections.Generic;
+using ECommon.Utilities;
 
 namespace ECommon.Remoting
 {
@@ -10,70 +11,142 @@ namespace ECommon.Remoting
             var sequenceBytes = BitConverter.GetBytes(request.Sequence);
             var codeBytes = BitConverter.GetBytes(request.Code);
             var typeBytes = BitConverter.GetBytes(request.Type);
-            var message = new byte[12 + request.Body.Length];
-
-            sequenceBytes.CopyTo(message, 0);
-            codeBytes.CopyTo(message, 8);
-            typeBytes.CopyTo(message, 10);
-            request.Body.CopyTo(message, 12);
-
-            return message;
+            var createdTimeBytes = ByteUtil.EncodeDateTime(request.CreatedTime);
+            var headerBytes = HeaderUtil.EncodeHeader(request.Header);
+            var headerLengthBytes = BitConverter.GetBytes(headerBytes.Length);
+            return ByteUtil.Combine(
+                sequenceBytes,
+                codeBytes,
+                typeBytes,
+                createdTimeBytes,
+                headerLengthBytes,
+                headerBytes,
+                request.Body);
         }
-        public static RemotingRequest ParseRequest(byte[] messageBuffer)
+        public static RemotingRequest ParseRequest(byte[] data)
         {
-            var sequenceBytes = new byte[8];
-            var codeBytes = new byte[2];
-            var typeBytes = new byte[2];
-            var body = new byte[messageBuffer.Length - 12];
+            var srcOffset = 0;
 
-            Array.Copy(messageBuffer, 0, sequenceBytes, 0, 8);
-            Array.Copy(messageBuffer, 8, codeBytes, 0, 2);
-            Array.Copy(messageBuffer, 10, typeBytes, 0, 2);
-            Array.Copy(messageBuffer, 12, body, 0, body.Length);
+            var sequence = ByteUtil.DecodeLong(data, srcOffset, out srcOffset);
+            var code = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var type = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var createdTime = ByteUtil.DecodeDateTime(data, srcOffset, out srcOffset);
+            var headerLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
+            var header = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
+            var bodyLength = data.Length - 24 - headerLength;
+            var body = new byte[bodyLength];
 
-            var sequence = BitConverter.ToInt64(sequenceBytes, 0);
-            var code = BitConverter.ToInt16(codeBytes, 0);
-            var type = BitConverter.ToInt16(typeBytes, 0);
+            Buffer.BlockCopy(data, srcOffset, body, 0, bodyLength);
 
-            return new RemotingRequest(code, body, sequence) { Type = type };
+            return new RemotingRequest(code, sequence, body, createdTime, header) { Type = type };
         }
 
         public static byte[] BuildResponseMessage(RemotingResponse response)
         {
-            var sequenceBytes = BitConverter.GetBytes(response.Sequence);
+            var requestSequenceBytes = BitConverter.GetBytes(response.RequestSequence);
             var requestCodeBytes = BitConverter.GetBytes(response.RequestCode);
-            var responseCodeBytes = BitConverter.GetBytes(response.Code);
-            var requestTypeBytes = BitConverter.GetBytes(response.Type);
-            var message = new byte[14 + response.Body.Length];
+            var requestTypeBytes = BitConverter.GetBytes(response.RequestType);
+            var requestTimeBytes = ByteUtil.EncodeDateTime(response.RequestTime);
+            var requestHeaderBytes = HeaderUtil.EncodeHeader(response.RequestHeader);
+            var requestHeaderLengthBytes = BitConverter.GetBytes(requestHeaderBytes.Length);
 
-            sequenceBytes.CopyTo(message, 0);
-            requestCodeBytes.CopyTo(message, 8);
-            responseCodeBytes.CopyTo(message, 10);
-            requestTypeBytes.CopyTo(message, 12);
-            response.Body.CopyTo(message, 14);
+            var responseCodeBytes = BitConverter.GetBytes(response.ResponseCode);
+            var responseTimeBytes = ByteUtil.EncodeDateTime(response.ResponseTime);
+            var responseHeaderBytes = HeaderUtil.EncodeHeader(response.ResponseHeader);
+            var responseHeaderLengthBytes = BitConverter.GetBytes(requestHeaderBytes.Length);
 
-            return message;
+            return ByteUtil.Combine(
+                requestSequenceBytes,
+                requestCodeBytes,
+                requestTypeBytes,
+                requestTimeBytes,
+                requestHeaderLengthBytes,
+                requestHeaderBytes,
+                responseCodeBytes,
+                responseTimeBytes,
+                responseHeaderLengthBytes,
+                responseHeaderBytes,
+                response.ResponseBody);
         }
-        public static RemotingResponse ParseResponse(byte[] messageBuffer)
+        public static RemotingResponse ParseResponse(byte[] data)
         {
-            var requestSequenceBytes = new byte[8];
-            var requestCodeBytes = new byte[2];
-            var responseCodeBytes = new byte[2];
-            var requestTypeBytes = new byte[2];
-            var responseBody = new byte[messageBuffer.Length - 14];
+            var srcOffset = 0;
 
-            Array.Copy(messageBuffer, 0, requestSequenceBytes, 0, 8);
-            Array.Copy(messageBuffer, 8, requestCodeBytes, 0, 2);
-            Array.Copy(messageBuffer, 10, responseCodeBytes, 0, 2);
-            Array.Copy(messageBuffer, 12, requestTypeBytes, 0, 2);
-            Array.Copy(messageBuffer, 14, responseBody, 0, responseBody.Length);
+            var requestSequence = ByteUtil.DecodeLong(data, srcOffset, out srcOffset);
+            var requestCode = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var requestType = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var requestTime = ByteUtil.DecodeDateTime(data, srcOffset, out srcOffset);
+            var requestHeaderLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
+            var requestHeader = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
+            var responseCode = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var responseTime = ByteUtil.DecodeDateTime(data, srcOffset, out srcOffset);
+            var responseHeaderLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
+            var responseHeader = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
 
-            var requestSequence = BitConverter.ToInt64(requestSequenceBytes, 0);
-            var requestCode = BitConverter.ToInt16(requestCodeBytes, 0);
-            var responseCode = BitConverter.ToInt16(responseCodeBytes, 0);
-            var requestType = BitConverter.ToInt16(requestTypeBytes, 0);
+            var responseBodyLength = data.Length - 38 - requestHeaderLength - responseHeaderLength;
+            var responseBody = new byte[responseBodyLength];
 
-            return new RemotingResponse(requestCode, responseCode, requestType, responseBody, requestSequence);
+            Buffer.BlockCopy(data, srcOffset, responseBody, 0, responseBodyLength);
+
+            return new RemotingResponse(
+                requestType,
+                requestCode,
+                requestSequence,
+                requestTime,
+                responseCode,
+                responseBody,
+                responseTime,
+                requestHeader,
+                responseHeader);
+        }
+    }
+    public class HeaderUtil
+    {
+        public static readonly byte[] ZeroLengthBytes = BitConverter.GetBytes(0);
+        public static readonly byte[] EmptyBytes = new byte[0];
+
+        public static byte[] EncodeHeader(IDictionary<string, string> header)
+        {
+            var headerKeyCount = header != null ? header.Count : 0;
+            var headerKeyCountBytes = BitConverter.GetBytes(headerKeyCount);
+            var bytesList = new List<byte[]>();
+
+            bytesList.Add(headerKeyCountBytes);
+
+            if (headerKeyCount > 0)
+            {
+                foreach (var entry in header)
+                {
+                    byte[] keyBytes;
+                    byte[] keyLengthBytes;
+                    byte[] valueBytes;
+                    byte[] valueLengthBytes;
+
+                    ByteUtil.EncodeString(entry.Key, out keyLengthBytes, out keyBytes);
+                    ByteUtil.EncodeString(entry.Value, out valueLengthBytes, out valueBytes);
+
+                    bytesList.Add(keyLengthBytes);
+                    bytesList.Add(keyBytes);
+                    bytesList.Add(valueLengthBytes);
+                    bytesList.Add(valueBytes);
+                }
+            }   
+
+            return ByteUtil.Combine(bytesList.ToArray());
+        }
+        public static IDictionary<string, string> DecodeHeader(byte[] data, int startOffset, out int nextStartOffset)
+        {
+            var dict = new Dictionary<string, string>();
+            var srcOffset = startOffset;
+            var headerKeyCount = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
+            for (var i = 0; i < headerKeyCount; i++)
+            {
+                var key = ByteUtil.DecodeString(data, srcOffset, out srcOffset);
+                var value = ByteUtil.DecodeString(data, srcOffset, out srcOffset);
+                dict.Add(key, value);
+            }
+            nextStartOffset = srcOffset;
+            return dict;
         }
     }
 }

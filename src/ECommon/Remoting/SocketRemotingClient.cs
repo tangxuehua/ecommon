@@ -166,7 +166,7 @@ namespace ECommon.Remoting
 
             var remotingResponse = RemotingUtil.ParseResponse(message);
 
-            if (remotingResponse.Type == RemotingRequestType.Callback)
+            if (remotingResponse.RequestType == RemotingRequestType.Callback)
             {
                 IResponseHandler responseHandler;
                 if (_responseHandlerDict.TryGetValue(remotingResponse.RequestCode, out responseHandler))
@@ -178,10 +178,10 @@ namespace ECommon.Remoting
                     _logger.ErrorFormat("No response handler found for remoting response:{0}", remotingResponse);
                 }
             }
-            else if (remotingResponse.Type == RemotingRequestType.Async)
+            else if (remotingResponse.RequestType == RemotingRequestType.Async)
             {
                 ResponseFuture responseFuture;
-                if (_responseFutureDict.TryRemove(remotingResponse.Sequence, out responseFuture))
+                if (_responseFutureDict.TryRemove(remotingResponse.RequestSequence, out responseFuture))
                 {
                     if (responseFuture.SetResponse(remotingResponse))
                     {
@@ -212,7 +212,17 @@ namespace ECommon.Remoting
                 ResponseFuture responseFuture;
                 if (_responseFutureDict.TryRemove(key, out responseFuture))
                 {
-                    responseFuture.SetResponse(new RemotingResponse(responseFuture.Request.Code, 0, responseFuture.Request.Type, TimeoutMessage, responseFuture.Request.Sequence));
+                    var request = responseFuture.Request;
+                    responseFuture.SetResponse(new RemotingResponse(
+                        request.Type,
+                        request.Code,
+                        request.Sequence,
+                        request.CreatedTime,
+                        0,
+                        TimeoutMessage,
+                        DateTime.Now,
+                        request.Header,
+                        null));
                     if (_logger.IsDebugEnabled)
                     {
                         _logger.DebugFormat("Removed timeout request:{0}", responseFuture.Request);

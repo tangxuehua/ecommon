@@ -5,6 +5,7 @@ using ECommon.Logging;
 using ECommon.Scheduling;
 using ECommon.Serializing;
 using ECommon.Socketing.Framing;
+using ECommon.Utilities;
 
 namespace ECommon.Configurations
 {
@@ -45,6 +46,7 @@ namespace ECommon.Configurations
             SetDefault<IScheduleService, ScheduleService>(null, LifeStyle.Transient);
             SetDefault<IMessageFramer, LengthPrefixMessageFramer>(null, LifeStyle.Transient);
             SetDefault<IOHelper, IOHelper>();
+            SetDefault<IPerformanceService, DefaultPerformanceService>(null, LifeStyle.Transient);
             return this;
         }
         public Configuration RegisterUnhandledExceptionHandler()

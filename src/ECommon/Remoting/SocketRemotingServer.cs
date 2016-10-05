@@ -70,7 +70,16 @@ namespace ECommon.Remoting
                 _logger.Error(errorMessage);
                 if (remotingRequest.Type != RemotingRequestType.Oneway)
                 {
-                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(errorMessage), remotingRequest.Sequence));
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(
+                        remotingRequest.Type,
+                        remotingRequest.Code,
+                        remotingRequest.Sequence,
+                        remotingRequest.CreatedTime,
+                        -1,
+                        Encoding.UTF8.GetBytes(errorMessage),
+                        DateTime.Now,
+                        remotingRequest.Header,
+                        null));
                 }
                 return;
             }
@@ -89,7 +98,16 @@ namespace ECommon.Remoting
                 _logger.Error(errorMessage, ex);
                 if (remotingRequest.Type != RemotingRequestType.Oneway)
                 {
-                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(remotingRequest.Code, -1, remotingRequest.Type, Encoding.UTF8.GetBytes(ex.Message), remotingRequest.Sequence));
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(
+                        remotingRequest.Type,
+                        remotingRequest.Code,
+                        remotingRequest.Sequence,
+                        remotingRequest.CreatedTime,
+                        -1,
+                        Encoding.UTF8.GetBytes(ex.Message),
+                        DateTime.Now,
+                        remotingRequest.Header,
+                        null));
                 }
             }
         }

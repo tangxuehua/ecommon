@@ -10,32 +10,36 @@ using ECommon.Logging;
 using ECommon.Remoting;
 using ECommon.Scheduling;
 using ECommon.Socketing;
+using ECommon.Utilities;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
 namespace RemotingPerformanceTest.Client
 {
     class Program
     {
+        static string _performanceKey = "SendMessage";
         static string _mode;
         static int _messageCount;
-        static int _sentCount;
-        static int _previousSentCount;
-        static long _calculateCount = 0;
         static byte[] _message;
         static ILogger _logger;
-        static IScheduleService _scheduleService;
+        static IPerformanceService _performanceService;
         static SocketRemotingClient _client;
 
         static void Main(string[] args)
         {
             InitializeECommon();
             StartSendMessageTest();
-            StartPrintThroughputTask();
             Console.ReadLine();
         }
 
         static void InitializeECommon()
         {
+            _message = new byte[int.Parse(ConfigurationManager.AppSettings["MessageSize"])];
+            _mode = ConfigurationManager.AppSettings["Mode"];
+            _messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
+
+            var logContextText = "mode: " + _mode;
+
             ECommonConfiguration
                 .Create()
                 .UseAutofac()
@@ -44,58 +48,70 @@ namespace RemotingPerformanceTest.Client
                 .RegisterUnhandledExceptionHandler();
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
-            _scheduleService = ObjectContainer.Resolve<IScheduleService>();
+            _performanceService = ObjectContainer.Resolve<IPerformanceService>();
+            var setting = new PerformanceServiceSetting
+            {
+                AutoLogging = false,
+                StatIntervalSeconds = 1,
+                PerformanceInfoHandler = x =>
+                {
+                    _logger.InfoFormat("{0}, {1}, totalCount: {2}, throughput: {3}, averageThrughput: {4}, rt: {5:F3}ms, averageRT: {6:F3}ms", _performanceService.Name, logContextText, x.TotalCount, x.Throughput, x.AverageThroughput, x.RT, x.AverageRT);
+                }
+            };
+            _performanceService.Initialize(_performanceKey, setting);
+            _performanceService.Start();
         }
         static void StartSendMessageTest()
         {
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
             var serverAddress = string.IsNullOrEmpty(serverIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(serverIP);
-            var messageSize = int.Parse(ConfigurationManager.AppSettings["MessageSize"]);
-
-            _message = new byte[messageSize];
-            _mode = ConfigurationManager.AppSettings["Mode"];
-            _messageCount = int.Parse(ConfigurationManager.AppSettings["MessageCount"]);
+            var sendAction = default(Action);
 
             _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000)).Start();
-
-            var sendAction = default(Action);
 
             if (_mode == "Oneway")
             {
                 sendAction = () =>
                 {
-                    _client.InvokeOneway(new RemotingRequest(100, _message));
-                    Interlocked.Increment(ref _sentCount);
+                    var request = new RemotingRequest(100, _message);
+                    _client.InvokeOneway(request);
+                    _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - request.CreatedTime).TotalMilliseconds);
                 };
             }
             else if (_mode == "Sync")
             {
                 sendAction = () =>
                 {
-                    _client.InvokeSync(new RemotingRequest(100, _message), 5000);
-                    Interlocked.Increment(ref _sentCount);
+                    var request = new RemotingRequest(100, _message);
+                    var response = _client.InvokeSync(request, 5000);
+                    _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - response.RequestTime).TotalMilliseconds);
                 };
             }
             else if (_mode == "Async")
             {
-                sendAction = () => _client.InvokeAsync(new RemotingRequest(100, _message), 100000).ContinueWith(t =>
+                sendAction = () =>
                 {
-                    if (t.Exception != null)
+                    var request = new RemotingRequest(100, _message);
+                    _client.InvokeAsync(request, 100000).ContinueWith(t =>
                     {
-                        _logger.Error(t.Exception);
-                        return;
-                    }
-                    if (t.Result.Code <= 0)
-                    {
-                        _logger.Error(Encoding.UTF8.GetString(t.Result.Body));
-                        return;
-                    }
-                    Interlocked.Increment(ref _sentCount);
-                });
+                        if (t.Exception != null)
+                        {
+                            _logger.Error(t.Exception);
+                            return;
+                        }
+                        var response = t.Result;
+                        if (response.ResponseCode <= 0)
+                        {
+                            _logger.Error(Encoding.UTF8.GetString(response.ResponseBody));
+                            return;
+                        }
+                        _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - response.RequestTime).TotalMilliseconds);
+                    });
+                };
             }
             else if (_mode == "Callback")
             {
-                _client.RegisterResponseHandler(100, new ResponseHandler());
+                _client.RegisterResponseHandler(100, new ResponseHandler(_performanceService, _performanceKey));
                 sendAction = () => _client.InvokeWithCallback(new RemotingRequest(100, _message));
             }
 
@@ -109,44 +125,32 @@ namespace RemotingPerformanceTest.Client
                     }
                     catch (Exception ex)
                     {
-                        _logger.ErrorFormat("Send remoting request failed, errorMsg:{0}", ex.Message);
+                        _logger.ErrorFormat("Send remotingRequest failed, errorMsg:{0}", ex.Message);
                         Thread.Sleep(3000);
                     }
                 }
             });
         }
-        static void StartPrintThroughputTask()
-        {
-            _scheduleService.StartTask("Program.PrintThroughput", PrintThroughput, 1000, 1000);
-        }
-        static void PrintThroughput()
-        {
-            var totalSentCount = _sentCount;
-            var throughput = totalSentCount - _previousSentCount;
-            _previousSentCount = totalSentCount;
-            if (throughput > 0)
-            {
-                _calculateCount++;
-            }
-
-            var average = 0L;
-            if (_calculateCount > 0)
-            {
-                average = totalSentCount / _calculateCount;
-            }
-            _logger.InfoFormat("Send message mode: {0}, totalSent: {1}, throughput: {2}/s, average: {3}", _mode, totalSentCount, throughput, average);
-        }
 
         class ResponseHandler : IResponseHandler
         {
+            private IPerformanceService _performanceService;
+            private string _performanceKey;
+
+            public ResponseHandler(IPerformanceService performanceService, string performanceKey)
+            {
+                _performanceService = performanceService;
+                _performanceKey = performanceKey;
+            }
+
             public void HandleResponse(RemotingResponse remotingResponse)
             {
-                if (remotingResponse.Code <= 0)
+                if (remotingResponse.ResponseCode <= 0)
                 {
-                    _logger.Error(Encoding.UTF8.GetString(remotingResponse.Body));
+                    _logger.Error(Encoding.UTF8.GetString(remotingResponse.ResponseBody));
                     return;
                 }
-                Interlocked.Increment(ref _sentCount);
+                _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - remotingResponse.RequestTime).TotalMilliseconds);
             }
         }
     }
