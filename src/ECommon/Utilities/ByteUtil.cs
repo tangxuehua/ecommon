@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -74,6 +75,17 @@ namespace ECommon.Utilities
             return dataBytes;
         }
         public static byte[] Combine(params byte[][] arrays)
+        {
+            byte[] destination = new byte[arrays.Sum(x => x.Length)];
+            int offset = 0;
+            foreach (byte[] data in arrays)
+            {
+                Buffer.BlockCopy(data, 0, destination, offset, data.Length);
+                offset += data.Length;
+            }
+            return destination;
+        }
+        public static byte[] Combine(IEnumerable<byte[]> arrays)
         {
             byte[] destination = new byte[arrays.Sum(x => x.Length)];
             int offset = 0;
