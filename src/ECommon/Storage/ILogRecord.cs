@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace ECommon.Storage.LogRecords
+namespace ECommon.Storage
 {
     public interface ILogRecord
     {

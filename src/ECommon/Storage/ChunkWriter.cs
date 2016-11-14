@@ -1,7 +1,6 @@
 ﻿using ECommon.Components;
 using ECommon.Scheduling;
 using ECommon.Utilities;
-using ECommon.Storage.LogRecords;
 using ECommon.Storage.Exceptions;
 
 namespace ECommon.Storage

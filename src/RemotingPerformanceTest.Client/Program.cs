@@ -8,7 +8,6 @@ using ECommon.Components;
 using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
-using ECommon.Scheduling;
 using ECommon.Socketing;
 using ECommon.Utilities;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
@@ -75,7 +74,7 @@ namespace RemotingPerformanceTest.Client
                 {
                     var request = new RemotingRequest(100, _message);
                     _client.InvokeOneway(request);
-                    _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - request.CreatedTime).TotalMilliseconds);
+                    _performanceService.IncrementKeyCount(_mode, (DateTime.Now - request.CreatedTime).TotalMilliseconds);
                 };
             }
             else if (_mode == "Sync")
@@ -84,7 +83,7 @@ namespace RemotingPerformanceTest.Client
                 {
                     var request = new RemotingRequest(100, _message);
                     var response = _client.InvokeSync(request, 5000);
-                    _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - response.RequestTime).TotalMilliseconds);
+                    _performanceService.IncrementKeyCount(_mode, (DateTime.Now - response.RequestTime).TotalMilliseconds);
                 };
             }
             else if (_mode == "Async")
@@ -105,13 +104,13 @@ namespace RemotingPerformanceTest.Client
                             _logger.Error(Encoding.UTF8.GetString(response.ResponseBody));
                             return;
                         }
-                        _performanceService.IncrementKeyCount(_performanceKey, (DateTime.Now - response.RequestTime).TotalMilliseconds);
+                        _performanceService.IncrementKeyCount(_mode, (DateTime.Now - response.RequestTime).TotalMilliseconds);
                     });
                 };
             }
             else if (_mode == "Callback")
             {
-                _client.RegisterResponseHandler(100, new ResponseHandler(_performanceService, _performanceKey));
+                _client.RegisterResponseHandler(100, new ResponseHandler(_performanceService, _mode));
                 sendAction = () => _client.InvokeWithCallback(new RemotingRequest(100, _message));
             }
 

@@ -6,7 +6,7 @@ namespace ECommon.Utilities
     {
         string Name { get; }
         PerformanceServiceSetting Setting { get; }
-        void Initialize(string name, PerformanceServiceSetting setting = null);
+        IPerformanceService Initialize(string name, PerformanceServiceSetting setting = null);
         void Start();
         void Stop();
         void IncrementKeyCount(string key, double rtMilliseconds);

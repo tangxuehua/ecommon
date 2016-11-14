@@ -24,9 +24,12 @@ namespace ECommon.Storage
         /// <summary>Chunk文件刷磁盘的间隔，毫秒为单位；
         /// </summary>
         public readonly int FlushChunkIntervalMilliseconds;
-        /// <summary>表示是否同步刷盘，如果选择同步刷盘，则消息会写完全写入磁盘后再返回给消息发送者；默认为false，即异步刷盘，每个FlushChunkIntervalMilliseconds刷一次磁盘；
+        /// <summary>表示是否同步刷盘；
         /// </summary>
         public readonly bool SyncFlush;
+        /// <summary>刷盘方式，是直接将数据刷入磁盘还是先刷入OS；
+        /// </summary>
+        public FlushOption FlushOption;
         /// <summary>表示是否缓存Chunk，缓存Chunk可以提高消费速度；
         /// </summary>
         public readonly bool EnableCache;
@@ -75,6 +78,7 @@ namespace ECommon.Storage
                                int flushChunkIntervalMilliseconds,
                                bool enableCache,
                                bool syncFlush,
+                               FlushOption flushOption,
                                int chunkReaderCount,
                                int maxLogRecordSize,
                                int chunkWriteBuffer,
@@ -114,6 +118,7 @@ namespace ECommon.Storage
             FlushChunkIntervalMilliseconds = flushChunkIntervalMilliseconds;
             EnableCache = enableCache;
             SyncFlush = syncFlush;
+            FlushOption = flushOption;
             ChunkReaderCount = chunkReaderCount;
             MaxLogRecordSize = maxLogRecordSize;
             ChunkWriteBuffer = chunkWriteBuffer;

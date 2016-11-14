@@ -74,6 +74,21 @@ namespace ECommon.Utilities
 
             return dataBytes;
         }
+        public static byte[] DecodeBytes(byte[] sourceBuffer, int startOffset, out int nextStartOffset)
+        {
+            var lengthBytes = new byte[4];
+            Buffer.BlockCopy(sourceBuffer, startOffset, lengthBytes, 0, 4);
+            startOffset += 4;
+
+            var length = BitConverter.ToInt32(lengthBytes, 0);
+            var dataBytes = new byte[length];
+            Buffer.BlockCopy(sourceBuffer, startOffset, dataBytes, 0, length);
+            startOffset += length;
+
+            nextStartOffset = startOffset;
+
+            return dataBytes;
+        }
         public static byte[] Combine(params byte[][] arrays)
         {
             byte[] destination = new byte[arrays.Sum(x => x.Length)];

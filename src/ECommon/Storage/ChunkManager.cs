@@ -10,7 +10,6 @@ using ECommon.Extensions;
 using ECommon.Logging;
 using ECommon.Scheduling;
 using ECommon.Utilities;
-using ECommon.Storage.LogRecords;
 
 namespace ECommon.Storage
 {

@@ -81,8 +81,9 @@
     <Compile Include="Storage\Exceptions\ChunkWriteException.cs" />
     <Compile Include="Storage\FileNamingStrategies\DefaultFileNamingStrategy.cs" />
     <Compile Include="Storage\FileNamingStrategies\IFileNamingStrategy.cs" />
-    <Compile Include="Storage\LogRecords\BufferLogRecord.cs" />
-    <Compile Include="Storage\LogRecords\ILogRecord.cs" />
+    <Compile Include="Storage\FlushOption.cs" />
+    <Compile Include="Storage\IStream.cs" />
+    <Compile Include="Storage\ILogRecord.cs" />
     <Compile Include="Storage\ReaderWorkItem.cs" />
     <Compile Include="Storage\RecordBufferReadResult.cs" />
     <Compile Include="Storage\RecordWriteResult.cs" />

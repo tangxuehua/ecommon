@@ -32,7 +32,7 @@ namespace ECommon.Utilities
             _countInfoDict = new ConcurrentDictionary<string, CountInfo>();
         }
 
-        public void Initialize(string name, PerformanceServiceSetting setting = null)
+        public IPerformanceService Initialize(string name, PerformanceServiceSetting setting = null)
         {
             Ensure.NotNullOrEmpty(name, "name");
 
@@ -53,6 +53,8 @@ namespace ECommon.Utilities
 
             _name = name;
             _taskName = name + ".Task";
+
+            return this;
         }
         public void Start()
         {

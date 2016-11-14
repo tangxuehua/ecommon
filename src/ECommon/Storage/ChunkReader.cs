@@ -1,7 +1,5 @@
 ﻿using System;
-using System.IO;
 using ECommon.Utilities;
-using ECommon.Storage.LogRecords;
 using ECommon.Storage.Exceptions;
 
 namespace ECommon.Storage
@@ -38,15 +36,6 @@ namespace ECommon.Storage
 
             var localPosition = chunk.ChunkHeader.GetLocalDataPosition(position);
             return chunk.TryReadAt(localPosition, readRecordFunc, autoCache);
-        }
-        public BufferLogRecord TryReadRecordBufferAt(long position)
-        {
-            return TryReadAt(position, recordBuffer =>
-            {
-                var record = new BufferLogRecord();
-                record.ReadFrom(recordBuffer);
-                return record;
-            });
         }
     }
 }

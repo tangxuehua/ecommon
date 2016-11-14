@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Utilities;
-using ECommon.Storage.LogRecords;
 using ECommon.Storage.Exceptions;
 
 namespace ECommon.Storage
@@ -265,8 +264,7 @@ namespace ECommon.Storage
 
                     File.Move(tempFilename, _filename);
 
-                    var fileStream = new FileStream(_filename, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, _chunkConfig.ChunkWriteBuffer, FileOptions.SequentialScan);
-                    writeStream = new BufferedStream(fileStream, _chunkConfig.ChunkWriteBuffer);
+                    writeStream = new FileStream(_filename, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, _chunkConfig.ChunkWriteBuffer, FileOptions.SequentialScan);
                     SetFileAttributes();
                 }
 
@@ -274,7 +272,7 @@ namespace ECommon.Storage
 
                 _dataPosition = 0;
                 _flushedDataPosition = 0;
-                _writerWorkItem = new WriterWorkItem(writeStream);
+                _writerWorkItem = new WriterWorkItem(new ChunkFileStream(writeStream, _chunkConfig.FlushOption));
 
                 InitializeReaderWorkItems();
 
@@ -388,13 +386,12 @@ namespace ECommon.Storage
             }
             else
             {
-                var fileStream = new FileStream(_filename, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, _chunkConfig.ChunkWriteBuffer, FileOptions.SequentialScan);
-                fileStream.Position = GetStreamPosition(_dataPosition);
-                writeStream = new BufferedStream(fileStream, _chunkConfig.ChunkWriteBuffer);
+                writeStream = new FileStream(_filename, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, _chunkConfig.ChunkWriteBuffer, FileOptions.SequentialScan);
+                writeStream.Position = GetStreamPosition(_dataPosition);
                 SetFileAttributes();
             }
 
-            _writerWorkItem = new WriterWorkItem(writeStream);
+            _writerWorkItem = new WriterWorkItem(new ChunkFileStream(writeStream, _chunkConfig.FlushOption));
 
             InitializeReaderWorkItems();
 
@@ -1247,7 +1244,73 @@ namespace ECommon.Storage
             public long RecordPosition;
             public byte[] RecordBuffer;
         }
+        class ChunkFileStream : IStream
+        {
+            public Stream Stream;
+            public FlushOption FlushOption;
 
+            public ChunkFileStream(Stream stream, FlushOption flushOption)
+            {
+                Stream = stream;
+                FlushOption = flushOption;
+            }
+
+            public long Length
+            {
+                get
+                {
+                    return Stream.Length;
+                }
+            }
+
+            public long Position
+            {
+                get
+                {
+                    return Stream.Position;
+                }
+
+                set
+                {
+                    Stream.Position = value;
+                }
+            }
+
+            public void Dispose()
+            {
+                Stream.Dispose();
+            }
+
+            public void Flush()
+            {
+                var fileStream = Stream as FileStream;
+                if (fileStream != null)
+                {
+                    if (FlushOption == FlushOption.FlushToDisk)
+                    {
+                        fileStream.Flush(true);
+                    }
+                    else
+                    {
+                        fileStream.Flush();
+                    }
+                }
+                else
+                {
+                    Stream.Flush();
+                }
+            }
+
+            public void SetLength(long value)
+            {
+                Stream.SetLength(value);
+            }
+
+            public void Write(byte[] buffer, int offset, int count)
+            {
+                Stream.Write(buffer, offset, count);
+            }
+        }
         public override string ToString()
         {
             return string.Format("({0}-#{1})", _chunkManager.Name, _chunkHeader.ChunkNumber);
