@@ -29,7 +29,7 @@ namespace ECommon.Utilities
         }
         public static string DecodeString(byte[] sourceBuffer, int startOffset, out int nextStartOffset)
         {
-            return Encoding.UTF8.GetString(DecodeStringBytes(sourceBuffer, startOffset, out nextStartOffset));
+            return Encoding.UTF8.GetString(DecodeBytes(sourceBuffer, startOffset, out nextStartOffset));
         }
         public static short DecodeShort(byte[] sourceBuffer, int startOffset, out int nextStartOffset)
         {
@@ -58,21 +58,6 @@ namespace ECommon.Utilities
             Buffer.BlockCopy(sourceBuffer, startOffset, longBytes, 0, 8);
             nextStartOffset = startOffset + 8;
             return new DateTime(BitConverter.ToInt64(longBytes, 0));
-        }
-        public static byte[] DecodeStringBytes(byte[] sourceBuffer, int startOffset, out int nextStartOffset)
-        {
-            var lengthBytes = new byte[4];
-            Buffer.BlockCopy(sourceBuffer, startOffset, lengthBytes, 0, 4);
-            startOffset += 4;
-
-            var length = BitConverter.ToInt32(lengthBytes, 0);
-            var dataBytes = new byte[length];
-            Buffer.BlockCopy(sourceBuffer, startOffset, dataBytes, 0, length);
-            startOffset += length;
-
-            nextStartOffset = startOffset;
-
-            return dataBytes;
         }
         public static byte[] DecodeBytes(byte[] sourceBuffer, int startOffset, out int nextStartOffset)
         {
