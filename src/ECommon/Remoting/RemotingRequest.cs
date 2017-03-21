@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using ECommon.Utilities;
 
 namespace ECommon.Remoting
 {
@@ -9,6 +10,7 @@ namespace ECommon.Remoting
     {
         private static long _sequence;
 
+        public string Id { get; set; }
         public short Type { get; set; }
         public short Code { get; set; }
         public long Sequence { get; set; }
@@ -17,9 +19,10 @@ namespace ECommon.Remoting
         public IDictionary<string, string> Header { get; set; }
 
         public RemotingRequest() { }
-        public RemotingRequest(short code, byte[] body, IDictionary<string, string> header = null) : this(code, Interlocked.Increment(ref _sequence), body, DateTime.Now, header) { }
-        public RemotingRequest(short code, long sequence, byte[] body, DateTime createdTime, IDictionary<string, string> header)
+        public RemotingRequest(short code, byte[] body, IDictionary<string, string> header = null) : this(ObjectId.GenerateNewStringId(), code, Interlocked.Increment(ref _sequence), body, DateTime.Now, header) { }
+        public RemotingRequest(string id, short code, long sequence, byte[] body, DateTime createdTime, IDictionary<string, string> header)
         {
+            Id = id;
             Code = code;
             Sequence = sequence;
             Body = body;
@@ -40,8 +43,8 @@ namespace ECommon.Remoting
             {
                 header = string.Join(",", Header.Select(x => string.Format("{0}:{1}", x.Key, x.Value)));
             }
-            return string.Format("[Type:{0}, Code:{1}, Sequence:{2}, CreatedTime:{3}, BodyLength:{4}, Header: [{5}]]",
-                Type, Code, Sequence, createdTime, bodyLength, header);
+            return string.Format("[Id:{0}, Type:{1}, Code:{2}, Sequence:{3}, CreatedTime:{4}, BodyLength:{5}, Header: [{6}]]",
+                Id, Type, Code, Sequence, createdTime, bodyLength, header);
         }
     }
     public class RemotingRequestType

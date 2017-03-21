@@ -8,13 +8,20 @@ namespace ECommon.Remoting
     {
         public static byte[] BuildRequestMessage(RemotingRequest request)
         {
+            byte[] IdBytes;
+            byte[] IdLengthBytes;
+            ByteUtil.EncodeString(request.Id, out IdLengthBytes, out IdBytes);
+
             var sequenceBytes = BitConverter.GetBytes(request.Sequence);
             var codeBytes = BitConverter.GetBytes(request.Code);
             var typeBytes = BitConverter.GetBytes(request.Type);
             var createdTimeBytes = ByteUtil.EncodeDateTime(request.CreatedTime);
             var headerBytes = HeaderUtil.EncodeHeader(request.Header);
             var headerLengthBytes = BitConverter.GetBytes(headerBytes.Length);
+
             return ByteUtil.Combine(
+                IdLengthBytes,
+                IdBytes,
                 sequenceBytes,
                 codeBytes,
                 typeBytes,
@@ -27,18 +34,19 @@ namespace ECommon.Remoting
         {
             var srcOffset = 0;
 
+            var id = ByteUtil.DecodeString(data, srcOffset, out srcOffset);
             var sequence = ByteUtil.DecodeLong(data, srcOffset, out srcOffset);
             var code = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
             var type = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
             var createdTime = ByteUtil.DecodeDateTime(data, srcOffset, out srcOffset);
             var headerLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
             var header = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
-            var bodyLength = data.Length - 24 - headerLength;
+            var bodyLength = data.Length - srcOffset;
             var body = new byte[bodyLength];
 
             Buffer.BlockCopy(data, srcOffset, body, 0, bodyLength);
 
-            return new RemotingRequest(code, sequence, body, createdTime, header) { Type = type };
+            return new RemotingRequest(id, code, sequence, body, createdTime, header) { Type = type };
         }
 
         public static byte[] BuildResponseMessage(RemotingResponse response)
@@ -83,7 +91,7 @@ namespace ECommon.Remoting
             var responseHeaderLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
             var responseHeader = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
 
-            var responseBodyLength = data.Length - 38 - requestHeaderLength - responseHeaderLength;
+            var responseBodyLength = data.Length - srcOffset;
             var responseBody = new byte[responseBodyLength];
 
             Buffer.BlockCopy(data, srcOffset, responseBody, 0, responseBodyLength);
