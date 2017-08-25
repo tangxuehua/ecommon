@@ -83,6 +83,11 @@ namespace RemotingPerformanceTest.Client
                 {
                     var request = new RemotingRequest(100, _message);
                     var response = _client.InvokeSync(request, 5000);
+                    if (response.ResponseCode != 10)
+                    {
+                        _logger.Error(Encoding.UTF8.GetString(response.ResponseBody));
+                        return;
+                    }
                     _performanceService.IncrementKeyCount(_mode, (DateTime.Now - response.RequestTime).TotalMilliseconds);
                 };
             }
@@ -99,7 +104,7 @@ namespace RemotingPerformanceTest.Client
                             return;
                         }
                         var response = t.Result;
-                        if (response.ResponseCode <= 0)
+                        if (response.ResponseCode != 10)
                         {
                             _logger.Error(Encoding.UTF8.GetString(response.ResponseBody));
                             return;
@@ -144,7 +149,7 @@ namespace RemotingPerformanceTest.Client
 
             public void HandleResponse(RemotingResponse remotingResponse)
             {
-                if (remotingResponse.ResponseCode <= 0)
+                if (remotingResponse.ResponseCode != 10)
                 {
                     _logger.Error(Encoding.UTF8.GetString(remotingResponse.ResponseBody));
                     return;

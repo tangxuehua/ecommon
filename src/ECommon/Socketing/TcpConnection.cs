@@ -15,6 +15,7 @@ namespace ECommon.Socketing
 {
     public interface ITcpConnection
     {
+        Guid Id { get; }
         bool IsConnected { get; }
         EndPoint LocalEndPoint { get; }
         EndPoint RemotingEndPoint { get; }
@@ -25,6 +26,7 @@ namespace ECommon.Socketing
     {
         #region Private Variables
 
+        private readonly Guid _id;
         private Socket _socket;
         private readonly SocketSetting _setting;
         private readonly EndPoint _localEndPoint;
@@ -52,6 +54,10 @@ namespace ECommon.Socketing
 
         #region Public Properties
 
+        public Guid Id
+        {
+            get { return _id; }
+        }
         public bool IsConnected
         {
             get { return _socket != null && _socket.Connected; }
@@ -87,6 +93,7 @@ namespace ECommon.Socketing
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
             Ensure.NotNull(connectionClosedHandler, "connectionClosedHandler");
 
+            _id = Guid.NewGuid();
             _socket = socket;
             _setting = setting;
             _receiveDataBufferPool = receiveDataBufferPool;
