@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using ECommon.Components;
 using ECommon.Logging;
@@ -21,6 +22,10 @@ namespace ECommon.Remoting
         public IBufferPool BufferPool
         {
             get { return _receiveDataBufferPool; }
+        }
+        public ServerSocket ServerSocket
+        {
+            get { return _serverSocket; }
         }
 
         public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
@@ -54,6 +59,19 @@ namespace ECommon.Remoting
         {
             _requestHandlerDict[requestCode] = requestHandler;
             return this;
+        }
+        public void PushMessageToAllConnections(RemotingServerMessage message)
+        {
+            var data = RemotingUtil.BuildRemotingServerMessage(message);
+            _serverSocket.PushMessageToAllConnections(data);
+        }
+        public void PushMessageToConnection(Guid connectionId, byte[] message)
+        {
+            _serverSocket.PushMessageToConnection(connectionId, message);
+        }
+        public IList<ITcpConnection> GetAllConnections()
+        {
+            return _serverSocket.GetAllConnections();
         }
 
         private void HandleRemotingRequest(ITcpConnection connection, byte[] message, Action<byte[]> sendReplyAction)

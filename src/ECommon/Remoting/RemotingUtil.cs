@@ -107,6 +107,46 @@ namespace ECommon.Remoting
                 requestHeader,
                 responseHeader);
         }
+
+        public static byte[] BuildRemotingServerMessage(RemotingServerMessage message)
+        {
+            byte[] IdBytes;
+            byte[] IdLengthBytes;
+            ByteUtil.EncodeString(message.Id, out IdLengthBytes, out IdBytes);
+
+            var typeBytes = BitConverter.GetBytes(message.Type);
+            var codeBytes = BitConverter.GetBytes(message.Code);
+            var createdTimeBytes = ByteUtil.EncodeDateTime(message.CreatedTime);
+            var headerBytes = HeaderUtil.EncodeHeader(message.Header);
+            var headerLengthBytes = BitConverter.GetBytes(headerBytes.Length);
+
+            return ByteUtil.Combine(
+                IdLengthBytes,
+                IdBytes,
+                typeBytes,
+                codeBytes,
+                createdTimeBytes,
+                headerLengthBytes,
+                headerBytes,
+                message.Body);
+        }
+        public static RemotingServerMessage ParseRemotingServerMessage(byte[] data)
+        {
+            var srcOffset = 0;
+
+            var id = ByteUtil.DecodeString(data, srcOffset, out srcOffset);
+            var type = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var code = ByteUtil.DecodeShort(data, srcOffset, out srcOffset);
+            var createdTime = ByteUtil.DecodeDateTime(data, srcOffset, out srcOffset);
+            var headerLength = ByteUtil.DecodeInt(data, srcOffset, out srcOffset);
+            var header = HeaderUtil.DecodeHeader(data, srcOffset, out srcOffset);
+            var bodyLength = data.Length - srcOffset;
+            var body = new byte[bodyLength];
+
+            Buffer.BlockCopy(data, srcOffset, body, 0, bodyLength);
+
+            return new RemotingServerMessage(type, id, code, body, createdTime, header);
+        }
     }
     public class HeaderUtil
     {

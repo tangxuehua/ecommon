@@ -64,6 +64,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions\BinaryWriterExtensions.cs" />
+    <Compile Include="Remoting\IRemotingServerMessageHandler.cs" />
+    <Compile Include="Remoting\RemotingServerMessageType.cs" />
+    <Compile Include="Remoting\RemotingServerMessage.cs" />
     <Compile Include="Storage\Chunk.cs" />
     <Compile Include="Storage\ChunkFooter.cs" />
     <Compile Include="Storage\ChunkHeader.cs" />

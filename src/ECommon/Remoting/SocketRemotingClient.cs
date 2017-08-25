@@ -21,6 +21,7 @@ namespace ECommon.Remoting
     {
         private readonly byte[] TimeoutMessage = Encoding.UTF8.GetBytes("Remoting request timeout.");
         private readonly Dictionary<int, IResponseHandler> _responseHandlerDict;
+        private readonly Dictionary<int, IRemotingServerMessageHandler> _remotingServerMessageHandlerDict;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly ConcurrentDictionary<long, ResponseFuture> _responseFutureDict;
         private readonly BlockingCollection<byte[]> _replyMessageQueue;
@@ -66,10 +67,11 @@ namespace ECommon.Remoting
             _localEndPoint = localEndPoint;
             _setting = setting ?? new SocketSetting();
             _receiveDataBufferPool = new BufferPool(_setting.ReceiveDataBufferSize, _setting.ReceiveDataBufferPoolSize);
-            _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleReplyMessage);
+            _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleServerMessage);
             _responseFutureDict = new ConcurrentDictionary<long, ResponseFuture>();
             _replyMessageQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             _responseHandlerDict = new Dictionary<int, IResponseHandler>();
+            _remotingServerMessageHandlerDict = new Dictionary<int, IRemotingServerMessageHandler>();
             _connectionEventListeners = new List<IConnectionEventListener>();
             _scheduleService = ObjectContainer.Resolve<IScheduleService>();
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
@@ -80,6 +82,11 @@ namespace ECommon.Remoting
         public SocketRemotingClient RegisterResponseHandler(int requestCode, IResponseHandler responseHandler)
         {
             _responseHandlerDict[requestCode] = responseHandler;
+            return this;
+        }
+        public SocketRemotingClient RegisterRemotingServerMessageHandler(int messageCode, IRemotingServerMessageHandler messageHandler)
+        {
+            _remotingServerMessageHandlerDict[messageCode] = messageHandler;
             return this;
         }
         public SocketRemotingClient RegisterConnectionEventListener(IConnectionEventListener listener)
@@ -160,7 +167,22 @@ namespace ECommon.Remoting
             _clientSocket.QueueMessage(RemotingUtil.BuildRequestMessage(request));
         }
 
-        private void HandleReplyMessage(ITcpConnection connection, byte[] message)
+        private void HandleServerMessage(ITcpConnection connection, byte[] message)
+        {
+            if (message == null) return;
+
+            var remotingServerMessage = RemotingUtil.ParseRemotingServerMessage(message);
+
+            if (remotingServerMessage.Type == RemotingServerMessageType.RemotingResponse)
+            {
+                HandleResponseMessage(connection, remotingServerMessage.Body);
+            }
+            else if (remotingServerMessage.Type == RemotingServerMessageType.ServerMessage)
+            {
+                HandleServerPushMessage(connection, remotingServerMessage);
+            }
+        }
+        private void HandleResponseMessage(ITcpConnection connection, byte[] message)
         {
             if (message == null) return;
 
@@ -195,6 +217,18 @@ namespace ECommon.Remoting
                         _logger.ErrorFormat("Set remoting response failed, response:" + remotingResponse);
                     }
                 }
+            }
+        }
+        private void HandleServerPushMessage(ITcpConnection connection, RemotingServerMessage message)
+        {
+            IRemotingServerMessageHandler messageHandler;
+            if (_remotingServerMessageHandlerDict.TryGetValue(message.Code, out messageHandler))
+            {
+                messageHandler.HandleMessage(message);
+            }
+            else
+            {
+                _logger.ErrorFormat("No handler found for remoting server message:{0}", message);
             }
         }
         private void ScanTimeoutRequest()
@@ -240,7 +274,7 @@ namespace ECommon.Remoting
             try
             {
                 _clientSocket.Shutdown();
-                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleReplyMessage);
+                _clientSocket = new ClientSocket(_serverEndPoint, _localEndPoint, _setting, _receiveDataBufferPool, HandleServerMessage);
                 foreach (var listener in _connectionEventListeners)
                 {
                     _clientSocket.RegisterConnectionEventListener(listener);
