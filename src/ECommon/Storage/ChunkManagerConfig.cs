@@ -45,12 +45,12 @@ namespace ECommon.Storage
         /// <summary>Chunk读取时的缓冲大小，字节为单位；
         /// </summary>
         public readonly int ChunkReadBuffer;
-        /// <summary>使用的总物理内存上限，如果超过上限，则不允许创建新的Chunk文件；
+        /// <summary>Chunk可以缓存的个数上限，超过上限则不会自动缓存新创建的Chunk文件；
         /// </summary>
-        public readonly int ChunkCacheMaxPercent;
-        /// <summary>Chunk文件使用内存的安全水位；低于这个水位，则不需要进行Chunk文件的非托管内存释放处理；高于这个水位，则开始进行Chunk文件的非托管内存释放处理；
+        public readonly int ChunkCacheMaxCount;
+        /// <summary>Chunk可以缓存的个数下限；低于下限则不需要进行Chunk文件的非托管内存释放处理；高于下限，则开始进行Chunk文件的非托管内存释放处理；
         /// </summary>
-        public readonly int ChunkCacheMinPercent;
+        public readonly int ChunkCacheMinCount;
         /// <summary>应用启动时，需要预加载到非托管内存的Chunk文件数；
         /// </summary>
         public readonly int PreCacheChunkCount;
@@ -83,8 +83,8 @@ namespace ECommon.Storage
                                int maxLogRecordSize,
                                int chunkWriteBuffer,
                                int chunkReadBuffer,
-                               int chunkCacheMaxPercent,
-                               int chunkCacheMinPercent,
+                               int chunkCacheMaxCount,
+                               int chunkCacheMinCount,
                                int preCacheChunkCount,
                                int chunkInactiveTimeMaxSeconds,
                                int chunkLocalCacheSize,
@@ -99,8 +99,8 @@ namespace ECommon.Storage
             Ensure.Positive(maxLogRecordSize, "maxLogRecordSize");
             Ensure.Positive(chunkWriteBuffer, "chunkWriteBuffer");
             Ensure.Positive(chunkReadBuffer, "chunkReadBuffer");
-            Ensure.Positive(chunkCacheMaxPercent, "chunkCacheMaxPercent");
-            Ensure.Positive(chunkCacheMinPercent, "chunkCacheMinPercent");
+            Ensure.Positive(chunkCacheMaxCount, "chunkCacheMaxCount");
+            Ensure.Positive(chunkCacheMinCount, "chunkCacheMinCount");
             Ensure.Nonnegative(preCacheChunkCount, "preCacheChunkCount");
             Ensure.Nonnegative(chunkInactiveTimeMaxSeconds, "chunkInactiveTimeMaxSeconds");
             Ensure.Positive(chunkLocalCacheSize, "chunkLocalCacheSize");
@@ -123,8 +123,8 @@ namespace ECommon.Storage
             MaxLogRecordSize = maxLogRecordSize;
             ChunkWriteBuffer = chunkWriteBuffer;
             ChunkReadBuffer = chunkReadBuffer;
-            ChunkCacheMaxPercent = chunkCacheMaxPercent;
-            ChunkCacheMinPercent = chunkCacheMinPercent;
+            ChunkCacheMaxCount = chunkCacheMaxCount;
+            ChunkCacheMinCount = chunkCacheMinCount;
             PreCacheChunkCount = preCacheChunkCount;
             ChunkInactiveTimeMaxSeconds = chunkInactiveTimeMaxSeconds;
             ChunkLocalCacheSize = chunkLocalCacheSize;

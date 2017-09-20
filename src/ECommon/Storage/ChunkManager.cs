@@ -265,6 +265,10 @@ namespace ECommon.Storage
         {
             _cachedReadDict.AddOrUpdate(chunkNum, GetDefaultCountInfo, UpdateCountInfo);
         }
+        public IList<Chunk> GetCachedFileChunks(bool checkIsCompleted = false, bool checkInactive = false)
+        {
+            return _chunks.Values.Where(x => (!checkIsCompleted || x.IsCompleted) && !x.IsMemoryChunk && x.HasCachedChunk && (!checkInactive || (DateTime.Now - x.LastActiveTime).TotalSeconds >= _config.ChunkInactiveTimeMaxSeconds)).OrderBy(x => x.LastActiveTime).ToList();
+        }
 
         public void Dispose()
         {
@@ -295,7 +299,7 @@ namespace ECommon.Storage
             _chunks.Add(chunk.ChunkHeader.ChunkNumber, chunk);
             _nextChunkNumber = chunk.ChunkHeader.ChunkNumber + 1;
         }
-        private int UncacheChunks(int maxUncacheCount = 10)
+        private int UncacheChunks()
         {
             var uncachedCount = 0;
 
@@ -303,31 +307,26 @@ namespace ECommon.Storage
             {
                 try
                 {
-                    var usedMemoryPercent = ChunkUtil.GetUsedMemoryPercent();
-                    if (usedMemoryPercent <= (ulong)_config.ChunkCacheMinPercent)
+                    var inactiveCachedFileChunks = GetCachedFileChunks(true, true);
+                    var maxUncacheCount = inactiveCachedFileChunks.Count - _config.ChunkCacheMinCount;
+                    if (maxUncacheCount <= 0)
                     {
                         return 0;
                     }
 
                     if (_logger.IsDebugEnabled)
                     {
-                        _logger.DebugFormat("Current memory usage {0}% exceed the chunkCacheMinPercent {1}%, try to uncache chunks.", usedMemoryPercent, _config.ChunkCacheMinPercent);
+                        _logger.DebugFormat("Current cached inactive file chunk count {0} exceed the chunkCacheMinCount {1}, try to uncache chunks.", inactiveCachedFileChunks.Count, _config.ChunkCacheMinCount);
                     }
 
-                    var chunks = _chunks.Values.Where(x => x.IsCompleted && !x.IsMemoryChunk && x.HasCachedChunk).OrderBy(x => x.LastActiveTime).ToList();
-
-                    foreach (var chunk in chunks)
+                    foreach (var fileChunk in inactiveCachedFileChunks)
                     {
-                        if ((DateTime.Now - chunk.LastActiveTime).TotalSeconds >= _config.ChunkInactiveTimeMaxSeconds)
+                        if (fileChunk.UnCacheFromMemory())
                         {
-                            if (chunk.UnCacheFromMemory())
+                            uncachedCount++;
+                            if (uncachedCount >= maxUncacheCount)
                             {
-                                Thread.Sleep(100); //即便有内存释放了，由于通过API读取到的内存使用数可能不会立即更新，所以等待一定时间后检查内存是否足够
-                                uncachedCount++;
-                                if (uncachedCount >= maxUncacheCount || ChunkUtil.GetUsedMemoryPercent() <= (ulong)_config.ChunkCacheMinPercent)
-                                {
-                                    break;
-                                }
+                                break;
                             }
                         }
                     }
@@ -336,7 +335,7 @@ namespace ECommon.Storage
                     {
                         if (uncachedCount > 0)
                         {
-                            _logger.DebugFormat("Uncached {0} chunks, current memory usage: {1}%", uncachedCount, ChunkUtil.GetUsedMemoryPercent());
+                            _logger.DebugFormat("Uncached {0} chunks", uncachedCount);
                         }
                         else
                         {

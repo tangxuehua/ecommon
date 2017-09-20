@@ -39,7 +39,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -56,7 +55,6 @@
     <Compile Include="Storage\ChunkManager.cs" />
     <Compile Include="Storage\ChunkManagerConfig.cs" />
     <Compile Include="Storage\ChunkReader.cs" />
-    <Compile Include="Storage\ChunkUtil.cs" />
     <Compile Include="Storage\ChunkWriter.cs" />
     <Compile Include="Storage\Exceptions\ChunkBadDataException.cs" />
     <Compile Include="Storage\Exceptions\ChunkCompleteException.cs" />

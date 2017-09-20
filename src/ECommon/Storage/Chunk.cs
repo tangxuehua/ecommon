@@ -280,8 +280,8 @@ namespace ECommon.Storage
                 {
                     if (_chunkConfig.EnableCache)
                     {
-                        var chunkSize = (ulong)GetChunkSize(_chunkHeader);
-                        if (ChunkUtil.IsMemoryEnoughToCacheChunk(chunkSize, (uint)_chunkConfig.ChunkCacheMaxPercent))
+                        var cachedFileChunks = _chunkManager.GetCachedFileChunks();
+                        if (cachedFileChunks.Count < _chunkConfig.ChunkCacheMaxCount)
                         {
                             try
                             {
@@ -399,8 +399,8 @@ namespace ECommon.Storage
             {
                 if (_chunkConfig.EnableCache)
                 {
-                    var chunkSize = (ulong)GetChunkSize(_chunkHeader);
-                    if (ChunkUtil.IsMemoryEnoughToCacheChunk(chunkSize, (uint)_chunkConfig.ChunkCacheMaxPercent))
+                    var cachedFileChunks = _chunkManager.GetCachedFileChunks();
+                    if (cachedFileChunks.Count < _chunkConfig.ChunkCacheMaxCount)
                     {
                         try
                         {
@@ -451,8 +451,8 @@ namespace ECommon.Storage
 
                 try
                 {
-                    var chunkSize = (ulong)GetChunkSize(_chunkHeader);
-                    if (!ChunkUtil.IsMemoryEnoughToCacheChunk(chunkSize, (uint)_chunkConfig.ChunkCacheMaxPercent))
+                    var cachedFileChunks = _chunkManager.GetCachedFileChunks();
+                    if (cachedFileChunks.Count >= _chunkConfig.ChunkCacheMaxCount)
                     {
                         return false;
                     }
