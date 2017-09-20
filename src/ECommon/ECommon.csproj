@@ -38,29 +38,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Autofac, Version=3.5.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
-      <HintPath>..\packages\Autofac.3.5.2\lib\net40\Autofac.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Dapper, Version=1.50.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Dapper.1.50.2\lib\net45\Dapper.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="log4net, Version=1.2.15.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
-      <HintPath>..\packages\log4net.2.0.5\lib\net45-full\log4net.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions\BinaryWriterExtensions.cs" />
@@ -91,17 +74,11 @@
     <Compile Include="Storage\RecordBufferReadResult.cs" />
     <Compile Include="Storage\RecordWriteResult.cs" />
     <Compile Include="Storage\WriterWorkItem.cs" />
-    <Compile Include="ThirdParty\Autofac\AutofacObjectContainer.cs" />
     <Compile Include="Configurations\Configuration.cs" />
-    <Compile Include="Configurations\ConfigurationExtensions.cs" />
     <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
-    <Compile Include="ThirdParty\Dapper\SqlMapperExtensions.cs" />
     <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="Extensions\TaskSchedulerExtensions.cs" />
-    <Compile Include="ThirdParty\JsonNet\NewtonsoftJsonSerializer.cs" />
-    <Compile Include="ThirdParty\Log4Net\Log4NetLogger.cs" />
-    <Compile Include="ThirdParty\Log4Net\Log4NetLoggerFactory.cs" />
     <Compile Include="Logging\EmptyLogger.cs" />
     <Compile Include="Logging\EmptyLoggerFactory.cs" />
     <Compile Include="IO\AsyncTaskResult.cs" />
@@ -165,9 +142,6 @@
     <Compile Include="Extensions\RemotingClientUtils.cs" />
     <Compile Include="Utilities\TypeUtils.cs" />
     <Compile Include="Utilities\ObjectUtils.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

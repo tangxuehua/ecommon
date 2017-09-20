@@ -75,6 +75,22 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ECommon.Autofac\ECommon.Autofac.csproj">
+      <Project>{edd0859d-0341-4222-a840-350b82d38124}</Project>
+      <Name>ECommon.Autofac</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ECommon.Dapper\ECommon.Dapper.csproj">
+      <Project>{b1c63f75-1472-4e89-8411-7cb36421cc28}</Project>
+      <Name>ECommon.Dapper</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ECommon.JsonNet\ECommon.JsonNet.csproj">
+      <Project>{0fe557e8-2ea1-4676-b0cd-04515814461d}</Project>
+      <Name>ECommon.JsonNet</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ECommon.Log4Net\ECommon.Log4Net.csproj">
+      <Project>{20779aa0-8173-49e0-a174-673075f1bdfb}</Project>
+      <Name>ECommon.Log4Net</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ECommon\ECommon.csproj">
       <Project>{d60f17ce-ff99-42cd-af71-97c157b17af3}</Project>
       <Name>ECommon</Name>

@@ -43,6 +43,7 @@ namespace PushMessageTestServer
                     {
                         var remotingServerMessage = new RemotingServerMessage(RemotingServerMessageType.ServerMessage, 100, Encoding.UTF8.GetBytes("message:" + i));
                         _remotingServer.PushMessageToAllConnections(remotingServerMessage);
+                        _logger.InfoFormat("Pushed server message: {0}", "message:" + i);
                         Thread.Sleep(1000);
                     }
                     catch (Exception ex)
