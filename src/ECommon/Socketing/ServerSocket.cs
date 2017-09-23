@@ -186,7 +186,10 @@ namespace ECommon.Socketing
         {
             try
             {
-                _messageArrivedHandler(connection, message, reply => connection.QueueMessage(reply));
+                _messageArrivedHandler(connection, message, reply =>
+                {
+                    Task.Factory.StartNew(() => connection.QueueMessage(reply));
+                });
             }
             catch (Exception ex)
             {
