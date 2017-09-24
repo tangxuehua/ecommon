@@ -23,7 +23,8 @@ namespace PushMessageTestServer
                 .UseAutofac()
                 .RegisterCommonComponents()
                 .UseLog4Net()
-                .RegisterUnhandledExceptionHandler();
+                .RegisterUnhandledExceptionHandler()
+                .BuildContainer();
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
             _remotingServer = new SocketRemotingServer().Start();

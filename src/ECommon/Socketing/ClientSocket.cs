@@ -25,6 +25,7 @@ namespace ECommon.Socketing
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
         private readonly int _flowControlThreshold;
+        private long _flowControlTimes;
 
         #endregion
 
@@ -113,6 +114,11 @@ namespace ECommon.Socketing
                     _flowControlThreshold,
                     _setting.SendMessageFlowControlStepPercent,
                     _setting.SendMessageFlowControlWaitMilliseconds);
+                var flowControlTimes = Interlocked.Increment(ref _flowControlTimes);
+                if (flowControlTimes % 1000 == 0)
+                {
+                    _logger.InfoFormat("Send socket data flow control, socketPendingMessageCount: {0}, flowControlThreshold: {1}, flowControlMilliseconds: {2}, flowControlTimes: {3}", _connection.PendingMessageCount, _flowControlThreshold, milliseconds, flowControlTimes);
+                }
                 Thread.Sleep(milliseconds);
             }
         }

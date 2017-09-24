@@ -29,7 +29,8 @@ namespace PushMessageTestClient
                 .UseAutofac()
                 .RegisterCommonComponents()
                 .UseLog4Net()
-                .RegisterUnhandledExceptionHandler();
+                .RegisterUnhandledExceptionHandler()
+                .BuildContainer();
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];

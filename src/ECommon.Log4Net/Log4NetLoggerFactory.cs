@@ -12,25 +12,28 @@ namespace ECommon.Log4Net
     /// </summary>
     public class Log4NetLoggerFactory : ILoggerFactory
     {
+        private readonly string loggerRepository;
+
         /// <summary>Parameterized constructor.
         /// </summary>
         /// <param name="configFile"></param>
-        public Log4NetLoggerFactory(string configFile)
+        public Log4NetLoggerFactory(string configFile, string loggerRepository = "NetStandardRepository")
         {
             var file = new FileInfo(configFile);
             if (!file.Exists)
             {
                 file = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configFile));
             }
-
+            var repository = LogManager.CreateRepository(loggerRepository);
             if (file.Exists)
             {
-                XmlConfigurator.ConfigureAndWatch(file);
+                XmlConfigurator.ConfigureAndWatch(repository, file);
             }
             else
             {
-                BasicConfigurator.Configure(new ConsoleAppender { Layout = new PatternLayout() });
+                BasicConfigurator.Configure(repository, new ConsoleAppender { Layout = new PatternLayout() });
             }
+            this.loggerRepository = loggerRepository;
         }
         /// <summary>Create a new Log4NetLogger instance.
         /// </summary>
@@ -38,7 +41,7 @@ namespace ECommon.Log4Net
         /// <returns></returns>
         public ILogger Create(string name)
         {
-            return new Log4NetLogger(LogManager.GetLogger(name));
+            return new Log4NetLogger(LogManager.GetLogger(loggerRepository, name));
         }
         /// <summary>Create a new Log4NetLogger instance.
         /// </summary>
@@ -46,7 +49,7 @@ namespace ECommon.Log4Net
         /// <returns></returns>
         public ILogger Create(Type type)
         {
-            return new Log4NetLogger(LogManager.GetLogger(type));
+            return new Log4NetLogger(LogManager.GetLogger(loggerRepository, type));
         }
     }
 }

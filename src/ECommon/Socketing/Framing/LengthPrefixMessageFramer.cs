@@ -40,11 +40,7 @@ namespace ECommon.Socketing.Framing
         }
         public void RegisterMessageArrivedCallback(Action<ArraySegment<byte>> handler)
         {
-            if (handler == null)
-            {
-                throw new ArgumentNullException("handler");
-            }
-            _receivedHandler = handler;
+            _receivedHandler = handler ?? throw new ArgumentNullException("handler");
         }
 
         /// <summary>

@@ -6,6 +6,9 @@ namespace ECommon.Components
     /// </summary>
     public interface IObjectContainer
     {
+        /// <summary>Build the container.
+        /// </summary>
+        void Build();
         /// <summary>Register a implementation type.
         /// </summary>
         /// <param name="implementationType">The implementation type.</param>

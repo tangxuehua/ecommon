@@ -51,8 +51,16 @@ namespace ECommon.Configurations
         }
         public Configuration RegisterUnhandledExceptionHandler()
         {
-            var logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) => logger.ErrorFormat("Unhandled exception: {0}", e.ExceptionObject);
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                var logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+                logger.ErrorFormat("Unhandled exception: {0}", e.ExceptionObject);
+            };
+            return this;
+        }
+        public Configuration BuildContainer()
+        {
+            ObjectContainer.Build();
             return this;
         }
     }

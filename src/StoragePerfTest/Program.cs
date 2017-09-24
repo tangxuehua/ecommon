@@ -26,7 +26,8 @@ namespace StoragePerfTest
                 .UseAutofac()
                 .RegisterCommonComponents()
                 .UseLog4Net()
-                .RegisterUnhandledExceptionHandler();
+                .RegisterUnhandledExceptionHandler()
+                .BuildContainer();
 
             var storeRootPath = ConfigurationManager.AppSettings["storeRootPath"];                                          //文件存储根目录
             var threadCount = int.Parse(ConfigurationManager.AppSettings["concurrentThreadCount"]);                         //并行写数据的线程数

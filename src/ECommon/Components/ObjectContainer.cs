@@ -18,6 +18,12 @@ namespace ECommon.Components
             Current = container;
         }
 
+        /// <summary>Build the container.
+        /// </summary>
+        public static void Build()
+        {
+            Current.Build();
+        }
         /// <summary>Register a implementation type.
         /// </summary>
         /// <param name="implementationType">The implementation type.</param>

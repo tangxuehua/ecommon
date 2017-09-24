@@ -10,6 +10,7 @@ using ECommon.Logging;
 using ECommon.Socketing.BufferManagement;
 using ECommon.Socketing.Framing;
 using ECommon.Utilities;
+using System.Threading.Tasks;
 
 namespace ECommon.Socketing
 {
@@ -37,7 +38,6 @@ namespace ECommon.Socketing
         private readonly IMessageFramer _framer;
         private readonly ILogger _logger;
         private readonly ConcurrentQueue<IEnumerable<ArraySegment<byte>>> _sendingQueue = new ConcurrentQueue<IEnumerable<ArraySegment<byte>>>();
-        private readonly ConcurrentQueue<ReceivedData> _receiveQueue = new ConcurrentQueue<ReceivedData>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
@@ -109,6 +109,7 @@ namespace ECommon.Socketing
             _receiveSocketArgs = new SocketAsyncEventArgs();
             _receiveSocketArgs.AcceptSocket = socket;
             _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
+            _receiveSocketArgs.UserToken = new ConcurrentQueue<ReceivedData>();
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
             _framer = ObjectContainer.Resolve<IMessageFramer>();
@@ -184,6 +185,10 @@ namespace ECommon.Socketing
                 ExitSending();
             }
         }
+        private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            ProcessSend(e);
+        }
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
             if (_closing == 1) return;
@@ -202,10 +207,6 @@ namespace ECommon.Socketing
             {
                 CloseInternal(socketArgs.SocketError, "Socket send error.", null);
             }
-        }
-        private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            ProcessSend(e);
         }
         private bool EnterSending()
         {
@@ -269,10 +270,11 @@ namespace ECommon.Socketing
             try
             {
                 var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
-                _receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
+                var receiveQueue = socketArgs.UserToken as ConcurrentQueue<ReceivedData>;
+                receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
                 socketArgs.SetBuffer(null, 0, 0);
 
-                TryParsingReceivedData();
+                TryParsingReceivedData(receiveQueue);
             }
             catch (Exception ex)
             {
@@ -283,17 +285,17 @@ namespace ECommon.Socketing
             ExitReceiving();
             TryReceive();
         }
-        private void TryParsingReceivedData()
+        private void TryParsingReceivedData(ConcurrentQueue<ReceivedData> receiveQueue)
         {
             if (!EnterParsing()) return;
 
             try
             {
-                var dataList = new List<ReceivedData>(_receiveQueue.Count);
+                var dataList = new List<ReceivedData>(receiveQueue.Count);
                 var segmentList = new List<ArraySegment<byte>>();
 
                 ReceivedData data;
-                while (_receiveQueue.TryDequeue(out data))
+                while (receiveQueue.TryDequeue(out data))
                 {
                     dataList.Add(data);
                     segmentList.Add(new ArraySegment<byte>(data.Buf.Array, data.Buf.Offset, data.DataLen));
@@ -315,14 +317,18 @@ namespace ECommon.Socketing
         {
             byte[] message = new byte[messageSegment.Count];
             Array.Copy(messageSegment.Array, messageSegment.Offset, message, 0, messageSegment.Count);
-            try
+
+            Task.Factory.StartNew(() =>
             {
-                _messageArrivedHandler(this, message);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Call message arrived handler failed.", ex);
-            }
+                try
+                {
+                    _messageArrivedHandler(this, message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Call message arrived handler failed.", ex);
+                }
+            });
         }
         private bool EnterReceiving()
         {
