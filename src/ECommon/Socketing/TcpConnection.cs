@@ -48,7 +48,7 @@ namespace ECommon.Socketing
         private int _parsing;
         private int _closing;
 
-        private long _pendingMessageCount;
+        private long _pendingMessageCount = 0L;
 
         #endregion
 
@@ -176,7 +176,7 @@ namespace ECommon.Socketing
                 var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
                 if (!firedAsync)
                 {
-                    ProcessSend(_sendSocketArgs);
+                    Task.Factory.StartNew(() => ProcessSend(_sendSocketArgs));
                 }
             }
             catch (Exception ex)

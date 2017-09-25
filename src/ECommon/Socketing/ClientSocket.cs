@@ -107,19 +107,15 @@ namespace ECommon.Socketing
 
         private void FlowControlIfNecessary()
         {
-            if (_flowControlThreshold > 0 && _connection.PendingMessageCount >= _flowControlThreshold)
+            var pendingMessageCount = _connection.PendingMessageCount;
+            if (_flowControlThreshold > 0 && pendingMessageCount >= _flowControlThreshold)
             {
-                var milliseconds = FlowControlUtil.CalculateFlowControlTimeMilliseconds(
-                    (int)_connection.PendingMessageCount,
-                    _flowControlThreshold,
-                    _setting.SendMessageFlowControlStepPercent,
-                    _setting.SendMessageFlowControlWaitMilliseconds);
+                Thread.Sleep(1);
                 var flowControlTimes = Interlocked.Increment(ref _flowControlTimes);
-                if (flowControlTimes % 1000 == 0)
+                if (flowControlTimes % 10000 == 0)
                 {
-                    _logger.InfoFormat("Send socket data flow control, socketPendingMessageCount: {0}, flowControlThreshold: {1}, flowControlMilliseconds: {2}, flowControlTimes: {3}", _connection.PendingMessageCount, _flowControlThreshold, milliseconds, flowControlTimes);
+                    _logger.InfoFormat("Send socket data flow control, pendingMessageCount: {0}, flowControlThreshold: {1}, flowControlTimes: {2}", pendingMessageCount, _flowControlThreshold, flowControlTimes);
                 }
-                Thread.Sleep(milliseconds);
             }
         }
         private void OnConnectAsyncCompleted(object sender, SocketAsyncEventArgs e)
