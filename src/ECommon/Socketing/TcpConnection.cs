@@ -192,10 +192,6 @@ namespace ECommon.Socketing
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
             if (_closing == 1) return;
-            if (socketArgs.Buffer != null)
-            {
-                socketArgs.SetBuffer(null, 0, 0);
-            }
 
             ExitSending();
 
