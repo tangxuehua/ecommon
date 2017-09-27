@@ -6,7 +6,7 @@
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
     <Product>ECommon</Product>
-    <Description>Dapper extension for ecommon.</Description>
+    <Description>An extension library for dapper.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -16,10 +16,6 @@
   <ItemGroup>
     <PackageReference Include="Dapper" Version="1.50.2" />
     <PackageReference Include="Microsoft.CSharp" Version="4.4.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\ECommon\ECommon.csproj" />
   </ItemGroup>
 
 </Project>
