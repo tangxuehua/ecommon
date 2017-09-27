@@ -18,7 +18,6 @@ namespace ECommon.Socketing
             socket.Blocking = false;
             socket.SendBufferSize = sendBufferSize;
             socket.ReceiveBufferSize = receiveBufferSize;
-            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             return socket;
         }
         public static void ShutdownSocket(Socket socket)
