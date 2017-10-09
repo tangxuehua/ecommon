@@ -347,7 +347,7 @@ namespace ECommon.Remoting
                 _remotingClient.ExitReconnecting();
                 _remotingClient.SetLocalEndPoint(connection.LocalEndPoint);
             }
-            public void OnConnectionFailed(SocketError socketError)
+            public void OnConnectionFailed(EndPoint remotingEndPoint, SocketError socketError)
             {
                 if (_remotingClient._shutteddown) return;
 

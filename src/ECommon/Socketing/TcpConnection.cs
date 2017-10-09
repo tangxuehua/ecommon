@@ -393,7 +393,7 @@ namespace ECommon.Socketing
                 var isDisposedException = exception != null && exception is ObjectDisposedException;
                 if (!isDisposedException)
                 {
-                    _logger.InfoFormat("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception);
+                    _logger.InfoFormat("Socket closed, remote endpoint:{0}, socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception);
                 }
                 _socket = null;
 

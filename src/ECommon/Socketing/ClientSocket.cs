@@ -14,8 +14,8 @@ namespace ECommon.Socketing
     {
         #region Private Variables
 
-        private EndPoint _serverEndPoint;
-        private EndPoint _localEndPoint;
+        private readonly EndPoint _serverEndPoint;
+        private readonly EndPoint _localEndPoint;
         private Socket _socket;
         private TcpConnection _connection;
         private readonly SocketSetting _setting;
@@ -132,8 +132,8 @@ namespace ECommon.Socketing
             if (e.SocketError != SocketError.Success)
             {
                 SocketUtils.ShutdownSocket(_socket);
-                _logger.InfoFormat("Socket connect failed, socketError:{0}", e.SocketError);
-                OnConnectionFailed(e.SocketError);
+                _logger.ErrorFormat("Socket connect failed, remoting server endpoint:{0}, socketError:{1}", _serverEndPoint, e.SocketError);
+                OnConnectionFailed(_serverEndPoint, e.SocketError);
                 _waitConnectHandle.Set();
                 return;
             }
@@ -171,13 +171,13 @@ namespace ECommon.Socketing
                 }
             }
         }
-        private void OnConnectionFailed(SocketError socketError)
+        private void OnConnectionFailed(EndPoint remotingEndPoint, SocketError socketError)
         {
             foreach (var listener in _connectionEventListeners)
             {
                 try
                 {
-                    listener.OnConnectionFailed(socketError);
+                    listener.OnConnectionFailed(remotingEndPoint, socketError);
                 }
                 catch (Exception ex)
                 {
