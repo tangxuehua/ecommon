@@ -314,17 +314,14 @@ namespace ECommon.Socketing
             byte[] message = new byte[messageSegment.Count];
             Array.Copy(messageSegment.Array, messageSegment.Offset, message, 0, messageSegment.Count);
 
-            Task.Factory.StartNew(() =>
+            try
             {
-                try
-                {
-                    _messageArrivedHandler(this, message);
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error("Call message arrived handler failed.", ex);
-                }
-            });
+                _messageArrivedHandler(this, message);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Call message arrived handler failed.", ex);
+            }
         }
         private bool EnterReceiving()
         {
