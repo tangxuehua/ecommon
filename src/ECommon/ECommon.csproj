@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
-    <Version>2.5.2</Version>
+    <Version>2.5.3</Version>
     <Description>ECommon utility library.</Description>
   </PropertyGroup>
 

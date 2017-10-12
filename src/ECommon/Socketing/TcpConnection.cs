@@ -242,7 +242,7 @@ namespace ECommon.Socketing
                 bool firedAsync = _receiveSocketArgs.AcceptSocket.ReceiveAsync(_receiveSocketArgs);
                 if (!firedAsync)
                 {
-                    ProcessReceive(_receiveSocketArgs);
+                    Task.Factory.StartNew(() => ProcessReceive(_receiveSocketArgs));
                 }
             }
             catch (Exception ex)
