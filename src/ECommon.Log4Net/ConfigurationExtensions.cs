@@ -17,9 +17,9 @@ namespace ECommon.Configurations
         /// <summary>Use Log4Net as the logger.
         /// </summary>
         /// <returns></returns>
-        public static Configuration UseLog4Net(this Configuration configuration, string configFile)
+        public static Configuration UseLog4Net(this Configuration configuration, string configFile, string loggerRepository = "NetStandardRepository")
         {
-            configuration.SetDefault<ILoggerFactory, Log4NetLoggerFactory>(new Log4NetLoggerFactory(configFile));
+            configuration.SetDefault<ILoggerFactory, Log4NetLoggerFactory>(new Log4NetLoggerFactory(configFile, loggerRepository));
             return configuration;
         }
     }

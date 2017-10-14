@@ -24,7 +24,13 @@ namespace ECommon.Log4Net
             {
                 file = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configFile));
             }
-            var repository = LogManager.CreateRepository(loggerRepository);
+            var repository = LogManager.GetRepository(loggerRepository);
+            if (repository != null)
+            {
+                return;
+            }
+
+            repository = LogManager.CreateRepository(loggerRepository);
             if (file.Exists)
             {
                 XmlConfigurator.ConfigureAndWatch(repository, file);
