@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.IO;
 using ECommon.Logging;
 using log4net;
@@ -17,20 +18,23 @@ namespace ECommon.Log4Net
         /// <summary>Parameterized constructor.
         /// </summary>
         /// <param name="configFile"></param>
+        /// <param name="loggerRepository"></param>
         public Log4NetLoggerFactory(string configFile, string loggerRepository = "NetStandardRepository")
         {
+            this.loggerRepository = loggerRepository;
+
             var file = new FileInfo(configFile);
             if (!file.Exists)
             {
                 file = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, configFile));
             }
-            var repository = LogManager.GetRepository(loggerRepository);
-            if (repository != null)
+            var repositories = LogManager.GetAllRepositories();
+            if (repositories != null && repositories.Any(x => x.Name == loggerRepository))
             {
                 return;
             }
 
-            repository = LogManager.CreateRepository(loggerRepository);
+            var repository = LogManager.CreateRepository(loggerRepository);
             if (file.Exists)
             {
                 XmlConfigurator.ConfigureAndWatch(repository, file);
@@ -39,7 +43,7 @@ namespace ECommon.Log4Net
             {
                 BasicConfigurator.Configure(repository, new ConsoleAppender { Layout = new PatternLayout() });
             }
-            this.loggerRepository = loggerRepository;
+
         }
         /// <summary>Create a new Log4NetLogger instance.
         /// </summary>
