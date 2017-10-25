@@ -6,6 +6,8 @@
     <Company>tangxuehua</Company>
     <Version>2.5.3</Version>
     <Description>ECommon utility library.</Description>
+    <AssemblyVersion>2.5.4.0</AssemblyVersion>
+    <FileVersion>2.5.4.0</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -110,10 +110,9 @@ namespace ECommon.Socketing
             {
                 if (!(ex is ObjectDisposedException))
                 {
-                    _logger.Info("Socket accept has exception, try to start accepting one second later.", ex);
+                    _logger.Info("Socket accept has exception.", ex);
                 }
-                Thread.Sleep(1000);
-                StartAccepting();
+                Task.Factory.StartNew(() => StartAccepting());
             }
         }
         private void AcceptCompleted(object sender, SocketAsyncEventArgs e)

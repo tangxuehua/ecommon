@@ -65,9 +65,11 @@ namespace ECommon.Socketing
         }
         public ClientSocket Start(int waitMilliseconds = 5000)
         {
-            var socketArgs = new SocketAsyncEventArgs();
-            socketArgs.AcceptSocket = _socket;
-            socketArgs.RemoteEndPoint = _serverEndPoint;
+            var socketArgs = new SocketAsyncEventArgs
+            {
+                AcceptSocket = _socket,
+                RemoteEndPoint = _serverEndPoint
+            };
             socketArgs.Completed += OnConnectAsyncCompleted;
             if (_localEndPoint != null)
             {
