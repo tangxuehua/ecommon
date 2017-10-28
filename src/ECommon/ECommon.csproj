@@ -1,13 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
     <Version>2.5.3</Version>
     <Description>ECommon utility library.</Description>
     <AssemblyVersion>2.5.4.0</AssemblyVersion>
     <FileVersion>2.5.4.0</FileVersion>
+    <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
