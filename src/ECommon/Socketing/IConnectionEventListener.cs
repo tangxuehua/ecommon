@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Net;
 using System.Net.Sockets;
 
 namespace ECommon.Socketing
@@ -7,7 +7,7 @@ namespace ECommon.Socketing
     {
         void OnConnectionAccepted(ITcpConnection connection);
         void OnConnectionEstablished(ITcpConnection connection);
-        void OnConnectionFailed(SocketError socketError);
+        void OnConnectionFailed(EndPoint remotingEndPoint, SocketError socketError);
         void OnConnectionClosed(ITcpConnection connection, SocketError socketError);
     }
 }

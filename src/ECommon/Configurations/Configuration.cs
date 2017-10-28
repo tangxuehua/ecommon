@@ -4,6 +4,8 @@ using ECommon.IO;
 using ECommon.Logging;
 using ECommon.Scheduling;
 using ECommon.Serializing;
+using ECommon.Socketing.Framing;
+using ECommon.Utilities;
 
 namespace ECommon.Configurations
 {
@@ -17,26 +19,22 @@ namespace ECommon.Configurations
 
         public static Configuration Create()
         {
-            if (Instance != null)
-            {
-                throw new Exception("Could not create configuration instance twice.");
-            }
             Instance = new Configuration();
             return Instance;
         }
 
-        public Configuration SetDefault<TService, TImplementer>(LifeStyle life = LifeStyle.Singleton)
+        public Configuration SetDefault<TService, TImplementer>(string serviceName = null, LifeStyle life = LifeStyle.Singleton)
             where TService : class
             where TImplementer : class, TService
         {
-            ObjectContainer.Register<TService, TImplementer>(life);
+            ObjectContainer.Register<TService, TImplementer>(serviceName, life);
             return this;
         }
-        public Configuration SetDefault<TService, TImplementer>(TImplementer instance)
+        public Configuration SetDefault<TService, TImplementer>(TImplementer instance, string serviceName = null)
             where TService : class
             where TImplementer : class, TService
         {
-            ObjectContainer.RegisterInstance<TService, TImplementer>(instance);
+            ObjectContainer.RegisterInstance<TService, TImplementer>(instance, serviceName);
             return this;
         }
 
@@ -45,14 +43,24 @@ namespace ECommon.Configurations
             SetDefault<ILoggerFactory, EmptyLoggerFactory>();
             SetDefault<IBinarySerializer, DefaultBinarySerializer>();
             SetDefault<IJsonSerializer, NotImplementedJsonSerializer>();
-            SetDefault<IScheduleService, ScheduleService>();
+            SetDefault<IScheduleService, ScheduleService>(null, LifeStyle.Transient);
+            SetDefault<IMessageFramer, LengthPrefixMessageFramer>(null, LifeStyle.Transient);
             SetDefault<IOHelper, IOHelper>();
+            SetDefault<IPerformanceService, DefaultPerformanceService>(null, LifeStyle.Transient);
             return this;
         }
         public Configuration RegisterUnhandledExceptionHandler()
         {
-            var logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
-            AppDomain.CurrentDomain.UnhandledException += (sender, e) => logger.ErrorFormat("Unhandled exception: {0}", e.ExceptionObject);
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                var logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+                logger.ErrorFormat("Unhandled exception: {0}", e.ExceptionObject);
+            };
+            return this;
+        }
+        public Configuration BuildContainer()
+        {
+            ObjectContainer.Build();
             return this;
         }
     }

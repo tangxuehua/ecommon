@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Net.Sockets;
-using ECommon.Logging;
 using ECommon.Socketing;
 
 namespace ECommon.Remoting
@@ -15,8 +13,19 @@ namespace ECommon.Remoting
             Connection = connection;
             SendRemotingResponse = remotingResponse =>
             {
-                sendReplyAction(RemotingUtil.BuildResponseMessage(remotingResponse));
+                sendReplyAction(BuildRemotingServerMessage(remotingResponse));
             };
+        }
+
+        private static byte[] BuildRemotingServerMessage(RemotingResponse remotingResponse)
+        {
+            byte[] remotingResponseData = RemotingUtil.BuildResponseMessage(remotingResponse);
+            var remotingServerMessage = new RemotingServerMessage(
+                RemotingServerMessageType.RemotingResponse,
+                100,
+                remotingResponseData,
+                null);
+            return RemotingUtil.BuildRemotingServerMessage(remotingServerMessage);
         }
     }
 }

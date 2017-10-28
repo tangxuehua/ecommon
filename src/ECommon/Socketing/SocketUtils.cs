@@ -11,12 +11,13 @@ namespace ECommon.Socketing
         {
             return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(x => x.AddressFamily == AddressFamily.InterNetwork);
         }
-        public static Socket CreateSocket()
+        public static Socket CreateSocket(int sendBufferSize, int receiveBufferSize)
         {
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.ReceiveBufferSize = 8192;
             socket.NoDelay = true;
-            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
+            socket.Blocking = false;
+            socket.SendBufferSize = sendBufferSize;
+            socket.ReceiveBufferSize = receiveBufferSize;
             return socket;
         }
         public static void ShutdownSocket(Socket socket)

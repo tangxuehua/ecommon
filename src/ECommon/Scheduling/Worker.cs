@@ -48,7 +48,6 @@ namespace ECommon.Scheduling
                     Name = string.Format("{0}.Worker", _actionName),
                     IsBackground = true
                 }.Start(this);
-                _logger.InfoFormat("Worker thread started, actionName:{0}", _actionName);
 
                 return this;
             }
@@ -62,7 +61,6 @@ namespace ECommon.Scheduling
                 if (_status == Status.StopRequested) return this;
 
                 _status = Status.StopRequested;
-                _logger.InfoFormat("Worker thread stop requested, actionName:{0}", _actionName);
 
                 return this;
             }

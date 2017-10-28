@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Threading;
-using ECommon.Autofac;
 using ECommon.Components;
-using ECommon.Log4Net;
+using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
-using ECommon.Scheduling;
+using ECommon.Utilities;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
 namespace RemotingPerformanceTest.Server
@@ -19,7 +17,8 @@ namespace RemotingPerformanceTest.Server
                 .UseAutofac()
                 .RegisterCommonComponents()
                 .UseLog4Net()
-                .RegisterUnhandledExceptionHandler();
+                .RegisterUnhandledExceptionHandler()
+                .BuildContainer();
 
             new SocketRemotingServer().RegisterRequestHandler(100, new RequestHandler()).Start();
             Console.ReadLine();
@@ -27,32 +26,42 @@ namespace RemotingPerformanceTest.Server
 
         class RequestHandler : IRequestHandler
         {
-            private long _previusHandledCount;
-            private long _handledCount;
-            private IScheduleService _scheduleService;
-            private ILogger _logger;
-            byte[] response = new byte[100];
+            private readonly ILogger _logger;
+            private readonly string _performanceKey = "ReceiveMessage";
+            private readonly IPerformanceService _performanceService;
+            private readonly byte[] response = new byte[0];
 
             public RequestHandler()
             {
-                _logger = ObjectContainer.Resolve<ILoggerFactory>().Create("RequestHandler");
-                _scheduleService = ObjectContainer.Resolve<IScheduleService>();
-                _scheduleService.StartTask("Program.PrintThroughput", PrintThroughput, 0, 1000);
+                _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+                _performanceService = ObjectContainer.Resolve<IPerformanceService>();
+                var setting = new PerformanceServiceSetting
+                {
+                    AutoLogging = false,
+                    StatIntervalSeconds = 1,
+                    PerformanceInfoHandler = x =>
+                    {
+                        _logger.InfoFormat("{0}, totalCount: {1}, throughput: {2}, averageThrughput: {3}, rt: {4:F3}ms, averageRT: {5:F3}ms", _performanceService.Name, x.TotalCount, x.Throughput, x.AverageThroughput, x.RT, x.AverageRT);
+                    }
+                };
+                _performanceService.Initialize(_performanceKey, setting);
+                _performanceService.Start();
             }
 
             public RemotingResponse HandleRequest(IRequestHandlerContext context, RemotingRequest remotingRequest)
             {
-                Interlocked.Increment(ref _handledCount);
-                return new RemotingResponse(remotingRequest.Code, 10, remotingRequest.Type, response, remotingRequest.Sequence);
-            }
-
-            private void PrintThroughput()
-            {
-                var totalHandledCount = _handledCount;
-                var totalCountOfCurrentPeriod = totalHandledCount - _previusHandledCount;
-                _previusHandledCount = totalHandledCount;
-
-                _logger.InfoFormat("currentTime: {0}, totalReceived: {1}, throughput: {2}/s", DateTime.Now.ToLongTimeString(), totalHandledCount, totalCountOfCurrentPeriod);
+                var currentTime = DateTime.Now;
+                _performanceService.IncrementKeyCount(_performanceKey, (currentTime - remotingRequest.CreatedTime).TotalMilliseconds);
+                return new RemotingResponse(
+                    remotingRequest.Type,
+                    remotingRequest.Code,
+                    remotingRequest.Sequence,
+                    remotingRequest.CreatedTime,
+                    10,
+                    response,
+                    currentTime,
+                    remotingRequest.Header,
+                    null);
             }
         }
     }

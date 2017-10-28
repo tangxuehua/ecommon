@@ -14,40 +14,48 @@ namespace ECommon.Socketing
     {
         #region Private Variables
 
-        private EndPoint _serverEndPoint;
-        private EndPoint _localEndPoint;
+        private readonly EndPoint _serverEndPoint;
+        private readonly EndPoint _localEndPoint;
         private Socket _socket;
         private TcpConnection _connection;
+        private readonly SocketSetting _setting;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
-        private readonly IBufferPool _bufferPool = new BufferPool(8192, 50);
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
         private readonly ManualResetEvent _waitConnectHandle;
+        private readonly int _flowControlThreshold;
+        private long _flowControlTimes;
 
         #endregion
 
         public bool IsConnected
         {
-            get { return _socket.Connected; }
+            get { return _connection != null && _connection.IsConnected; }
         }
-        public Socket Socket
+        public TcpConnection Connection
         {
-            get { return _socket; }
+            get { return _connection; }
         }
 
-        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, Action<ITcpConnection, byte[]> messageArrivedHandler)
+        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
+            Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
             _connectionEventListeners = new List<IConnectionEventListener>();
 
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
+            _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _messageArrivedHandler = messageArrivedHandler;
             _waitConnectHandle = new ManualResetEvent(false);
-            _socket = SocketUtils.CreateSocket();
+            _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(GetType().FullName);
+            _flowControlThreshold = _setting.SendMessageFlowControlThreshold;
         }
 
         public ClientSocket RegisterConnectionEventListener(IConnectionEventListener listener)
@@ -55,11 +63,13 @@ namespace ECommon.Socketing
             _connectionEventListeners.Add(listener);
             return this;
         }
-        public ClientSocket Start()
+        public ClientSocket Start(int waitMilliseconds = 5000)
         {
-            var socketArgs = new SocketAsyncEventArgs();
-            socketArgs.AcceptSocket = _socket;
-            socketArgs.RemoteEndPoint = _serverEndPoint;
+            var socketArgs = new SocketAsyncEventArgs
+            {
+                AcceptSocket = _socket,
+                RemoteEndPoint = _serverEndPoint
+            };
             socketArgs.Completed += OnConnectAsyncCompleted;
             if (_localEndPoint != null)
             {
@@ -72,38 +82,65 @@ namespace ECommon.Socketing
                 ProcessConnect(socketArgs);
             }
 
-            _waitConnectHandle.WaitOne(5000);
+            _waitConnectHandle.WaitOne(waitMilliseconds);
 
             return this;
         }
-        public ClientSocket SendAsync(byte[] message)
+        public ClientSocket QueueMessage(byte[] message)
         {
-            _connection.Send(message);
+            _connection.QueueMessage(message);
+            FlowControlIfNecessary();
             return this;
         }
         public ClientSocket Shutdown()
         {
-            SocketUtils.ShutdownSocket(_socket);
+            if (_connection != null)
+            {
+                _connection.Close();
+                _connection = null;
+            }
+            else
+            {
+                SocketUtils.ShutdownSocket(_socket);
+                _socket = null;
+            }
             return this;
         }
 
+        private void FlowControlIfNecessary()
+        {
+            var pendingMessageCount = _connection.PendingMessageCount;
+            if (_flowControlThreshold > 0 && pendingMessageCount >= _flowControlThreshold)
+            {
+                Thread.Sleep(1);
+                var flowControlTimes = Interlocked.Increment(ref _flowControlTimes);
+                if (flowControlTimes % 10000 == 0)
+                {
+                    _logger.InfoFormat("Send socket data flow control, pendingMessageCount: {0}, flowControlThreshold: {1}, flowControlTimes: {2}", pendingMessageCount, _flowControlThreshold, flowControlTimes);
+                }
+            }
+        }
         private void OnConnectAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
             ProcessConnect(e);
         }
         private void ProcessConnect(SocketAsyncEventArgs e)
         {
+            e.Completed -= OnConnectAsyncCompleted;
             e.AcceptSocket = null;
+            e.RemoteEndPoint = null;
+            e.Dispose();
 
             if (e.SocketError != SocketError.Success)
             {
                 SocketUtils.ShutdownSocket(_socket);
-                _logger.InfoFormat("Socket connect failed, socketError:{0}", e.SocketError);
-                OnConnectionFailed(e.SocketError);
+                _logger.ErrorFormat("Socket connect failed, remoting server endpoint:{0}, socketError:{1}", _serverEndPoint, e.SocketError);
+                OnConnectionFailed(_serverEndPoint, e.SocketError);
+                _waitConnectHandle.Set();
                 return;
             }
 
-            _connection = new TcpConnection(_socket, _bufferPool, OnMessageArrived, OnConnectionClosed);
+            _connection = new TcpConnection(_socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
 
             _logger.InfoFormat("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint);
 
@@ -136,13 +173,13 @@ namespace ECommon.Socketing
                 }
             }
         }
-        private void OnConnectionFailed(SocketError socketError)
+        private void OnConnectionFailed(EndPoint remotingEndPoint, SocketError socketError)
         {
             foreach (var listener in _connectionEventListeners)
             {
                 try
                 {
-                    listener.OnConnectionFailed(socketError);
+                    listener.OnConnectionFailed(remotingEndPoint, socketError);
                 }
                 catch (Exception ex)
                 {

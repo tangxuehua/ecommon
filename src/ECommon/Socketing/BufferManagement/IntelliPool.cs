@@ -41,7 +41,6 @@ namespace ECommon.Socketing.BufferManagement
             PoolItemState state = new PoolItemState();
             state.Generation = CurrentGeneration;
             _bufferDict.TryAdd(item, state);
-            Console.WriteLine("Register new item.");
         }
 
         /// <summary>
@@ -251,7 +250,6 @@ namespace ECommon.Socketing.BufferManagement
             return true;
         }
 
-        long _expandCount = 0;
         void Expand()
         {
             var totalCount = _totalCount;
@@ -261,12 +259,6 @@ namespace ECommon.Socketing.BufferManagement
                 _store.Push(item);
                 Interlocked.Increment(ref _availableCount);
                 RegisterNewItem(item);
-            }
-
-            var c = Interlocked.Increment(ref _expandCount);
-            if (c % 1 == 0)
-            {
-                Console.WriteLine("Expand buffer pool, count: {0}", c);
             }
 
             _currentGeneration++;
