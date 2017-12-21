@@ -34,7 +34,7 @@ namespace PushMessageTestClient
 
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
-            var serverAddress = string.IsNullOrEmpty(serverIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(serverIP);
+            var serverAddress = string.IsNullOrEmpty(serverIP) ? IPAddress.Loopback : IPAddress.Parse(serverIP);
             _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000)).Start();
             _client.RegisterRemotingServerMessageHandler(100, new RemotingServerMessageHandler());
         }

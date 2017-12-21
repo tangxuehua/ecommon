@@ -28,7 +28,7 @@ namespace ECommon.Remoting
             get { return _serverSocket; }
         }
 
-        public SocketRemotingServer() : this("Server", new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingServer() : this("Server", new IPEndPoint(IPAddress.Loopback, 5000)) { }
         public SocketRemotingServer(string name, IPEndPoint listeningEndPoint, SocketSetting setting = null)
         {
             _setting = setting ?? new SocketSetting();

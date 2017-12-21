@@ -64,7 +64,7 @@ namespace RemotingPerformanceTest.Client
         static void StartSendMessageTest()
         {
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
-            var serverAddress = string.IsNullOrEmpty(serverIP) ? SocketUtils.GetLocalIPV4() : IPAddress.Parse(serverIP);
+            var serverAddress = string.IsNullOrEmpty(serverIP) ? IPAddress.Loopback : IPAddress.Parse(serverIP);
             var sendAction = default(Action);
 
             _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000)).Start();

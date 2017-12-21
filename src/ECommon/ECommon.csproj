@@ -4,10 +4,10 @@
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
-    <Version>2.5.6</Version>
+    <Version>2.5.7</Version>
     <Description>ECommon utility library.</Description>
-    <AssemblyVersion>2.5.6.0</AssemblyVersion>
-    <FileVersion>2.5.6.0</FileVersion>
+    <AssemblyVersion>2.5.7.0</AssemblyVersion>
+    <FileVersion>2.5.7.0</FileVersion>
     <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
