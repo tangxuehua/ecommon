@@ -60,7 +60,7 @@ namespace ECommon.Storage
         public string ChunkPath { get { return _chunkPath; } }
         public bool IsMemoryMode { get { return _isMemoryMode; } }
 
-        public ChunkManager(string name, ChunkManagerConfig config, bool isMemoryMode, string relativePath = null)
+        public ChunkManager(string name, ChunkManagerConfig config, bool isMemoryMode, IEnumerable<string> relativePaths = null)
         {
             Ensure.NotNull(name, "name");
             Ensure.NotNull(config, "config");
@@ -68,13 +68,18 @@ namespace ECommon.Storage
             Name = name;
             _config = config;
             _isMemoryMode = isMemoryMode;
-            if (string.IsNullOrEmpty(relativePath))
+            if (relativePaths == null)
             {
                 _chunkPath = _config.BasePath;
             }
             else
             {
-                _chunkPath = Path.Combine(_config.BasePath, relativePath);
+                var chunkPath = _config.BasePath;
+                foreach (var relativePath in relativePaths)
+                {
+                    chunkPath = Path.Combine(chunkPath, relativePath);
+                }
+                _chunkPath = chunkPath;
             }
             if (!Directory.Exists(_chunkPath))
             {

@@ -58,7 +58,7 @@ namespace ECommon.Remoting
             get { return _receiveDataBufferPool; }
         }
 
-        public SocketRemotingClient() : this(new IPEndPoint(SocketUtils.GetLocalIPV4(), 5000)) { }
+        public SocketRemotingClient() : this(new IPEndPoint(IPAddress.Loopback, 5000)) { }
         public SocketRemotingClient(EndPoint serverEndPoint, SocketSetting setting = null, EndPoint localEndPoint = null)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
