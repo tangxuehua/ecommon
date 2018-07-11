@@ -29,6 +29,8 @@ namespace ECommon.Remoting
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly ILogger _logger;
         private readonly SocketSetting _setting;
+        private readonly byte[] HeartbeatMessage = new byte[0];
+        private int _heartbeatTimeoutCount;
 
         private EndPoint _serverEndPoint;
         private EndPoint _localEndPoint;
@@ -81,6 +83,10 @@ namespace ECommon.Remoting
 
         public SocketRemotingClient RegisterResponseHandler(int requestCode, IResponseHandler responseHandler)
         {
+            if (requestCode == _setting.HeartbeatRequestCode)
+            {
+                throw new Exception(string.Format("Request code cannot be hearbeat request code: {0}", _setting.HeartbeatRequestCode));
+            }
             _responseHandlerDict[requestCode] = responseHandler;
             return this;
         }
@@ -101,6 +107,7 @@ namespace ECommon.Remoting
 
             StartClientSocket();
             StartScanTimeoutRequestTask();
+            StartSendHeartbeatTask();
             _shutteddown = false;
             _started = true;
             return this;
@@ -264,11 +271,11 @@ namespace ECommon.Remoting
                 }
             }
         }
-        private void ReconnectServer()
+        private void ReconnectServer(bool ignoreConnected = false)
         {
             _logger.InfoFormat("Try to reconnect to server, address: {0}", _serverEndPoint);
 
-            if (_clientSocket.IsConnected) return;
+            if (!ignoreConnected && _clientSocket.IsConnected) return;
             if (!EnterReconnecting()) return;
 
             try
@@ -303,13 +310,21 @@ namespace ECommon.Remoting
         {
             _scheduleService.StopTask(string.Format("{0}.ScanTimeoutRequest", this.GetType().Name));
         }
-        private void StartReconnectServerTask()
+        private void StartReconnectServerTask(bool ignoreConnected = false)
         {
-            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", this.GetType().Name), ReconnectServer, 1000, _setting.ReconnectToServerInterval);
+            _scheduleService.StartTask(string.Format("{0}.ReconnectServer", this.GetType().Name), () => ReconnectServer(ignoreConnected), 1000, _setting.ReconnectToServerInterval);
         }
         private void StopReconnectServerTask()
         {
             _scheduleService.StopTask(string.Format("{0}.ReconnectServer", this.GetType().Name));
+        }
+        private void StartSendHeartbeatTask(bool ignoreConnected = false)
+        {
+            _scheduleService.StartTask(string.Format("{0}.SendHeartbeat", this.GetType().Name), SendHeartbeat, 1000, _setting.SendHeartbeatInterval);
+        }
+        private void StopSendHeartbeatTask()
+        {
+            _scheduleService.StopTask(string.Format("{0}.SendHeartbeat", this.GetType().Name));
         }
         private void EnsureClientStatus()
         {
@@ -329,6 +344,23 @@ namespace ECommon.Remoting
         private void SetLocalEndPoint(EndPoint localEndPoint)
         {
             _localEndPoint = localEndPoint;
+        }
+        private void SendHeartbeat()
+        {
+            try
+            {
+                InvokeSync(new RemotingRequest(_setting.HeartbeatRequestCode, HeartbeatMessage), _setting.HeartbeatResponseTimeoutMilliseconds);
+                _logger.Info("Socket client heartbeat success.");
+            }
+            catch
+            {
+                _heartbeatTimeoutCount++;
+                if (_heartbeatTimeoutCount >= 3)
+                {
+                    _logger.Error("Socket client heartbeat response timeout for three times, start to reconnect to server task.");
+                    StartReconnectServerTask(true);
+                }
+            }
         }
 
         class ConnectionEventListener : IConnectionEventListener

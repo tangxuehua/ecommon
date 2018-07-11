@@ -84,6 +84,11 @@ namespace ECommon.Socketing
 
             _waitConnectHandle.WaitOne(waitMilliseconds);
 
+            if (_connection == null)
+            {
+                throw new Exception(string.Format("Socket connect failed or timeout, server endpoint: {0}", _serverEndPoint));
+            }
+
             return this;
         }
         public ClientSocket QueueMessage(byte[] message)
