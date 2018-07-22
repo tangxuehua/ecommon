@@ -30,7 +30,7 @@ namespace ECommon.Remoting
         private readonly ILogger _logger;
         private readonly SocketSetting _setting;
         private readonly byte[] HeartbeatMessage = new byte[0];
-        private int _heartbeatTimeoutCount;
+        private int _heartbeatFailedCount;
 
         private EndPoint _serverEndPoint;
         private EndPoint _localEndPoint;
@@ -120,28 +120,6 @@ namespace ECommon.Remoting
             ShutdownClientSocket();
         }
 
-        public RemotingResponse InvokeSync(RemotingRequest request, int timeoutMillis)
-        {
-            var task = InvokeAsync(request, timeoutMillis);
-            var response = task.WaitResult<RemotingResponse>(timeoutMillis + 1000);
-
-            if (response == null)
-            {
-                if (!task.IsCompleted)
-                {
-                    throw new RemotingTimeoutException(_serverEndPoint, request, timeoutMillis);
-                }
-                else if (task.IsFaulted)
-                {
-                    throw new RemotingRequestException(_serverEndPoint, request, task.Exception);
-                }
-                else
-                {
-                    throw new RemotingRequestException(_serverEndPoint, request, "Remoting response is null due to unkown exception.");
-                }
-            }
-            return response;
-        }
         public Task<RemotingResponse> InvokeAsync(RemotingRequest request, int timeoutMillis)
         {
             EnsureClientStatus();
@@ -352,15 +330,28 @@ namespace ECommon.Remoting
         {
             try
             {
-                InvokeSync(new RemotingRequest(_setting.HeartbeatRequestCode, HeartbeatMessage), _setting.HeartbeatResponseTimeoutMilliseconds);
+                InvokeAsync(new RemotingRequest(_setting.HeartbeatRequestCode, HeartbeatMessage), _setting.HeartbeatResponseTimeoutMilliseconds)
+                    .ContinueWith(t =>
+                    {
+                        if (!t.IsCompleted || t.IsFaulted || t.Exception != null || t.Result == null || t.Result.ResponseCode == 0)
+                        {
+                            _heartbeatFailedCount++;
+                            if (_heartbeatFailedCount >= 3)
+                            {
+                                _heartbeatFailedCount = 0;
+                                _logger.Error("Socket client heartbeat failed for three times, start the reconnect server task.");
+                                StartReconnectServerTask(true);
+                            }
+                        }
+                    }).ConfigureAwait(false);
             }
             catch
             {
-                _heartbeatTimeoutCount++;
-                if (_heartbeatTimeoutCount >= 3)
+                _heartbeatFailedCount++;
+                if (_heartbeatFailedCount >= 3)
                 {
-                    _heartbeatTimeoutCount = 0;
-                    _logger.Error("Socket client heartbeat response timeout for three times, start the reconnect server task.");
+                    _heartbeatFailedCount = 0;
+                    _logger.Error("Socket client heartbeat failed for three times, start the reconnect server task.");
                     StartReconnectServerTask(true);
                 }
             }

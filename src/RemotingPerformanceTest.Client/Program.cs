@@ -78,20 +78,6 @@ namespace RemotingPerformanceTest.Client
                     _performanceService.IncrementKeyCount(_mode, (DateTime.Now - request.CreatedTime).TotalMilliseconds);
                 };
             }
-            else if (_mode == "Sync")
-            {
-                sendAction = () =>
-                {
-                    var request = new RemotingRequest(100, _message);
-                    var response = _client.InvokeSync(request, 5000);
-                    if (response.ResponseCode != 10)
-                    {
-                        _logger.Error(Encoding.UTF8.GetString(response.ResponseBody));
-                        return;
-                    }
-                    _performanceService.IncrementKeyCount(_mode, (DateTime.Now - response.RequestTime).TotalMilliseconds);
-                };
-            }
             else if (_mode == "Async")
             {
                 sendAction = () =>
