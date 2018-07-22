@@ -18,6 +18,7 @@ namespace ECommon.Remoting
         private readonly ILogger _logger;
         private readonly SocketSetting _setting;
         private bool _isShuttingdown = false;
+        private readonly byte[] HeartbeatResponseMessage = new byte[0];
 
         public IBufferPool BufferPool
         {
@@ -81,6 +82,24 @@ namespace ECommon.Remoting
             var remotingRequest = RemotingUtil.ParseRequest(message);
             var requestHandlerContext = new SocketRequestHandlerContext(connection, sendReplyAction);
 
+            if (remotingRequest.Code == _setting.HeartbeatRequestCode)
+            {
+                _logger.DebugFormat("Heartbeat from remoting request:{0}", remotingRequest);
+                if (remotingRequest.Type != RemotingRequestType.Oneway)
+                {
+                    requestHandlerContext.SendRemotingResponse(new RemotingResponse(
+                        remotingRequest.Type,
+                        remotingRequest.Code,
+                        remotingRequest.Sequence,
+                        remotingRequest.CreatedTime,
+                        -1,
+                        HeartbeatResponseMessage,
+                        DateTime.Now,
+                        remotingRequest.Header,
+                        null));
+                }
+                return;
+            }
             IRequestHandler requestHandler;
             if (!_requestHandlerDict.TryGetValue(remotingRequest.Code, out requestHandler))
             {

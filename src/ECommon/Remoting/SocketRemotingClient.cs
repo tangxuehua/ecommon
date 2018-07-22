@@ -291,6 +291,9 @@ namespace ECommon.Remoting
             catch (Exception ex)
             {
                 _logger.Error("Reconnect to server error.", ex);
+            }
+            finally
+            {
                 ExitReconnecting();
             }
         }
@@ -350,14 +353,14 @@ namespace ECommon.Remoting
             try
             {
                 InvokeSync(new RemotingRequest(_setting.HeartbeatRequestCode, HeartbeatMessage), _setting.HeartbeatResponseTimeoutMilliseconds);
-                _logger.Info("Socket client heartbeat success.");
             }
             catch
             {
                 _heartbeatTimeoutCount++;
                 if (_heartbeatTimeoutCount >= 3)
                 {
-                    _logger.Error("Socket client heartbeat response timeout for three times, start to reconnect to server task.");
+                    _heartbeatTimeoutCount = 0;
+                    _logger.Error("Socket client heartbeat response timeout for three times, start the reconnect server task.");
                     StartReconnectServerTask(true);
                 }
             }
