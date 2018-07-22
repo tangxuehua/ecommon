@@ -5,13 +5,17 @@
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
     <Version>2.5.8</Version>
-    <Description>ECommon utility library.</Description>
-    <AssemblyVersion>2.5.7.0</AssemblyVersion>
-    <FileVersion>2.5.7.0</FileVersion>
+    <Description>An infrastructure utility library written by c#.</Description>
+    <AssemblyVersion>2.5.8.0</AssemblyVersion>
+    <FileVersion>2.5.8.0</FileVersion>
     <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
+    <Copyright>2018</Copyright>
+    <PackageTags>Socket, IO</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
