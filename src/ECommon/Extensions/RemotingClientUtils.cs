@@ -7,12 +7,12 @@ namespace ECommon.Extensions
 {
     public static class RemotingClientUtils
     {
-        public static IEnumerable<SocketRemotingClient> ToRemotingClientList(this IEnumerable<IPEndPoint> endpointList, SocketSetting socketSetting)
+        public static IEnumerable<SocketRemotingClient> ToRemotingClientList(this IEnumerable<IPEndPoint> endpointList, string name, SocketSetting socketSetting)
         {
             var remotingClientList = new List<SocketRemotingClient>();
             foreach (var endpoint in endpointList)
             {
-                var remotingClient = new SocketRemotingClient(endpoint, socketSetting);
+                var remotingClient = new SocketRemotingClient(name, endpoint, socketSetting);
                 remotingClientList.Add(remotingClient);
             }
             return remotingClientList;

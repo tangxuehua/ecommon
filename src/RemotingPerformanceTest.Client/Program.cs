@@ -67,7 +67,7 @@ namespace RemotingPerformanceTest.Client
             var serverAddress = string.IsNullOrEmpty(serverIP) ? IPAddress.Loopback : IPAddress.Parse(serverIP);
             var sendAction = default(Action);
 
-            _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000)).Start();
+            _client = new SocketRemotingClient("Client", new IPEndPoint(serverAddress, 5000)).Start();
 
             if (_mode == "Oneway")
             {

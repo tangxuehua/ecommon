@@ -13,11 +13,13 @@ namespace ECommon.Socketing
         }
         public static Socket CreateSocket(int sendBufferSize, int receiveBufferSize)
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.NoDelay = true;
-            socket.Blocking = false;
-            socket.SendBufferSize = sendBufferSize;
-            socket.ReceiveBufferSize = receiveBufferSize;
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true,
+                Blocking = false,
+                SendBufferSize = sendBufferSize,
+                ReceiveBufferSize = receiveBufferSize
+            };
             return socket;
         }
         public static void ShutdownSocket(Socket socket)

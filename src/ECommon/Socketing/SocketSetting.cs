@@ -16,7 +16,5 @@
 
         public int SendHeartbeatInterval = 1000;
         public int HeartbeatResponseTimeoutMilliseconds = 5000;
-
-        public short HeartbeatRequestCode = -10;
     }
 }

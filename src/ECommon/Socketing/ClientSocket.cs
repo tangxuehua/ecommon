@@ -17,7 +17,6 @@ namespace ECommon.Socketing
         private readonly EndPoint _serverEndPoint;
         private readonly EndPoint _localEndPoint;
         private Socket _socket;
-        private TcpConnection _connection;
         private readonly SocketSetting _setting;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
@@ -31,22 +30,20 @@ namespace ECommon.Socketing
 
         public bool IsConnected
         {
-            get { return _connection != null && _connection.IsConnected; }
+            get { return Connection != null && Connection.IsConnected; }
         }
-        public TcpConnection Connection
-        {
-            get { return _connection; }
-        }
+        public string Name { get; private set; }
+        public TcpConnection Connection { get; private set; }
 
-        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
+        public ClientSocket(string name, EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
             Ensure.NotNull(setting, "setting");
             Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
+            Name = name;
             _connectionEventListeners = new List<IConnectionEventListener>();
-
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
             _setting = setting;
@@ -84,25 +81,25 @@ namespace ECommon.Socketing
 
             _waitConnectHandle.WaitOne(waitMilliseconds);
 
-            if (_connection == null)
+            if (Connection == null)
             {
-                throw new Exception(string.Format("Socket connect failed or timeout, server endpoint: {0}", _serverEndPoint));
+                throw new Exception(string.Format("Client socket connect failed or timeout, name: {0}, serverEndPoint: {1}", Name, _serverEndPoint));
             }
 
             return this;
         }
         public ClientSocket QueueMessage(byte[] message)
         {
-            _connection.QueueMessage(message);
+            Connection.QueueMessage(message);
             FlowControlIfNecessary();
             return this;
         }
         public ClientSocket Shutdown()
         {
-            if (_connection != null)
+            if (Connection != null)
             {
-                _connection.Close();
-                _connection = null;
+                Connection.Close();
+                Connection = null;
             }
             else
             {
@@ -114,14 +111,14 @@ namespace ECommon.Socketing
 
         private void FlowControlIfNecessary()
         {
-            var pendingMessageCount = _connection.PendingMessageCount;
+            var pendingMessageCount = Connection.PendingMessageCount;
             if (_flowControlThreshold > 0 && pendingMessageCount >= _flowControlThreshold)
             {
                 Thread.Sleep(1);
                 var flowControlTimes = Interlocked.Increment(ref _flowControlTimes);
                 if (flowControlTimes % 10000 == 0)
                 {
-                    _logger.InfoFormat("Send socket data flow control, pendingMessageCount: {0}, flowControlThreshold: {1}, flowControlTimes: {2}", pendingMessageCount, _flowControlThreshold, flowControlTimes);
+                    _logger.InfoFormat("Client socket send data flow control, name: {0}, pendingMessageCount: {1}, flowControlThreshold: {2}, flowControlTimes: {3}", Name, pendingMessageCount, _flowControlThreshold, flowControlTimes);
                 }
             }
         }
@@ -139,17 +136,17 @@ namespace ECommon.Socketing
             if (e.SocketError != SocketError.Success)
             {
                 SocketUtils.ShutdownSocket(_socket);
-                _logger.ErrorFormat("Socket connect failed, remoting server endpoint:{0}, socketError:{1}", _serverEndPoint, e.SocketError);
+                _logger.ErrorFormat("Client socket connect failed, name: {0}, remotingServerEndPoint: {1}, socketError: {2}", Name, _serverEndPoint, e.SocketError);
                 OnConnectionFailed(_serverEndPoint, e.SocketError);
                 _waitConnectHandle.Set();
                 return;
             }
 
-            _connection = new TcpConnection(_socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
+            Connection = new TcpConnection(Name, _socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
 
-            _logger.InfoFormat("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint);
+            _logger.InfoFormat("Client socket connected, name: {0}, remotingServerEndPoint: {1}, localEndPoint: {2}", Name, Connection.RemotingEndPoint, Connection.LocalEndPoint);
 
-            OnConnectionEstablished(_connection);
+            OnConnectionEstablished(Connection);
 
             _waitConnectHandle.Set();
         }
@@ -161,7 +158,7 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Error("Handle message error.", ex);
+                _logger.Error(string.Format("Client socket handle message has exception, name: {0}", Name), ex);
             }
         }
         private void OnConnectionEstablished(ITcpConnection connection)
@@ -174,7 +171,7 @@ namespace ECommon.Socketing
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Notify connection established failed, listener type:{0}", listener.GetType().Name), ex);
+                    _logger.Error(string.Format("Client socket notify connection established has exception, name: {0}, listenerType: {1}", Name, listener.GetType().Name), ex);
                 }
             }
         }
@@ -188,7 +185,7 @@ namespace ECommon.Socketing
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Notify connection failed has exception, listener type:{0}", listener.GetType().Name), ex);
+                    _logger.Error(string.Format("Client socket notify connection failed has exception, name: {0}, listenerType: {1}", Name, listener.GetType().Name), ex);
                 }
             }
         }
@@ -202,7 +199,7 @@ namespace ECommon.Socketing
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Notify connection closed failed, listener type:{0}", listener.GetType().Name), ex);
+                    _logger.Error(string.Format("Client socket notify connection closed has exception, name: {0}, listenerType: {1}", Name, listener.GetType().Name), ex);
                 }
             }
         }

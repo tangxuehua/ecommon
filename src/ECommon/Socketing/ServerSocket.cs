@@ -27,16 +27,18 @@ namespace ECommon.Socketing
         private readonly IBufferPool _receiveDataBufferPool;
         private readonly ConcurrentDictionary<Guid, ITcpConnection> _connectionDict;
         private readonly ILogger _logger;
+        private readonly string _name;
 
         #endregion
 
-        public ServerSocket(IPEndPoint listeningEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
+        public ServerSocket(string name, IPEndPoint listeningEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
         {
             Ensure.NotNull(listeningEndPoint, "listeningEndPoint");
             Ensure.NotNull(setting, "setting");
             Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
+            _name = name;
             _listeningEndPoint = listeningEndPoint;
             _setting = setting;
             _receiveDataBufferPool = receiveDataBufferPool;
@@ -55,7 +57,7 @@ namespace ECommon.Socketing
         }
         public void Start()
         {
-            _logger.InfoFormat("Socket server is starting, listening on TCP endpoint: {0}.", _listeningEndPoint);
+            _logger.InfoFormat("Socket server is starting, name: {0}, listening on listeningEndPoint: {1}.", _name, _listeningEndPoint);
 
             try
             {
@@ -64,7 +66,7 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Error(string.Format("Failed to listen on TCP endpoint: {0}.", _listeningEndPoint), ex);
+                _logger.Error(string.Format("Socket server start failed, name: {0}, listeningEndPoint: {1}.", _name, _listeningEndPoint), ex);
                 SocketUtils.ShutdownSocket(_socket);
                 throw;
             }
@@ -74,7 +76,7 @@ namespace ECommon.Socketing
         public void Shutdown()
         {
             SocketUtils.ShutdownSocket(_socket);
-            _logger.InfoFormat("Socket server shutdown, listening TCP endpoint: {0}.", _listeningEndPoint);
+            _logger.InfoFormat("Socket server shutdown, name: {0}, listeningEndPoint: {1}.", _name, _listeningEndPoint);
         }
         public void PushMessageToAllConnections(byte[] message)
         {
@@ -110,7 +112,7 @@ namespace ECommon.Socketing
             {
                 if (!(ex is ObjectDisposedException))
                 {
-                    _logger.Info("Socket accept has exception.", ex);
+                    _logger.Error(string.Format("Socket server accept has exception, name: {0}, listeningEndPoint: {1}.", _name, _listeningEndPoint), ex);
                 }
                 Task.Factory.StartNew(() => StartAccepting());
             }
@@ -127,7 +129,7 @@ namespace ECommon.Socketing
                 {
                     var acceptSocket = e.AcceptSocket;
                     e.AcceptSocket = null;
-                    OnSocketAccepted(acceptSocket);
+                    OnSocketAccepted(acceptSocket, e.UserToken);
                 }
                 else
                 {
@@ -138,7 +140,7 @@ namespace ECommon.Socketing
             catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
-                _logger.Error("Process socket accept has exception.", ex);
+                _logger.Error(string.Format("Socket server process accept has exception, name: {0}, listeningEndPoint: {1}.", _name, _listeningEndPoint), ex);
             }
             finally
             {
@@ -146,16 +148,16 @@ namespace ECommon.Socketing
             }
         }
 
-        private void OnSocketAccepted(Socket socket)
+        private void OnSocketAccepted(Socket socket, object userToken)
         {
             Task.Factory.StartNew(() =>
             {
                 try
                 {
-                    var connection = new TcpConnection(socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
+                    var connection = new TcpConnection(_name, socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
                     if (_connectionDict.TryAdd(connection.Id, connection))
                     {
-                        _logger.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
+                        _logger.InfoFormat("Socket server new client accepted, name: {0}, listeningEndPoint: {1}, remoteEndPoint: {2}", _name, _listeningEndPoint, socket.RemoteEndPoint);
 
                         foreach (var listener in _connectionEventListeners)
                         {
@@ -165,19 +167,15 @@ namespace ECommon.Socketing
                             }
                             catch (Exception ex)
                             {
-                                _logger.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
+                                _logger.Error(string.Format("Notify socket server new client connection accepted has exception, name: {0}, listenerType: {1}", _name, listener.GetType().Name), ex);
                             }
                         }
-                    }
-                    else
-                    {
-                        _logger.InfoFormat("Duplicated tcp connection, remote endpoint:{0}", socket.RemoteEndPoint);
                     }
                 }
                 catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
-                    _logger.Info("Accept socket client has unknown exception.", ex);
+                    _logger.Info(string.Format("Socket server accept new client has unknown exception, name: {0}, listeningEndPoint: {1}", _name, _listeningEndPoint), ex);
                 }
             });
         }
@@ -192,7 +190,7 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Error("Handle message error.", ex);
+                _logger.Error(string.Format("Socket server handle message has exception, name: {0}, listeningEndPoint: {1}", _name, _listeningEndPoint), ex);
             }
         }
         private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
@@ -206,7 +204,7 @@ namespace ECommon.Socketing
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(string.Format("Notify connection closed failed, listener type:{0}", listener.GetType().Name), ex);
+                    _logger.Error(string.Format("Notify socket server client connection closed has exception, name: {0}, listenerType: {1}", _name, listener.GetType().Name), ex);
                 }
             }
         }

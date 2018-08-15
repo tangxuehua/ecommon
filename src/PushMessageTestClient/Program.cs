@@ -6,7 +6,6 @@ using ECommon.Components;
 using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
-using ECommon.Socketing;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
 namespace PushMessageTestClient
@@ -35,7 +34,7 @@ namespace PushMessageTestClient
             _logger = ObjectContainer.Resolve<ILoggerFactory>().Create(typeof(Program).Name);
             var serverIP = ConfigurationManager.AppSettings["ServerAddress"];
             var serverAddress = string.IsNullOrEmpty(serverIP) ? IPAddress.Loopback : IPAddress.Parse(serverIP);
-            _client = new SocketRemotingClient(new IPEndPoint(serverAddress, 5000)).Start();
+            _client = new SocketRemotingClient("Client", new IPEndPoint(serverAddress, 5000)).Start();
             _client.RegisterRemotingServerMessageHandler(100, new RemotingServerMessageHandler());
         }
         

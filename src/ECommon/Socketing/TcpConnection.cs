@@ -27,11 +27,6 @@ namespace ECommon.Socketing
     {
         #region Private Variables
 
-        private readonly Guid _id;
-        private Socket _socket;
-        private readonly SocketSetting _setting;
-        private readonly EndPoint _localEndPoint;
-        private readonly EndPoint _remotingEndPoint;
         private readonly SocketAsyncEventArgs _sendSocketArgs;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
         private readonly IBufferPool _receiveDataBufferPool;
@@ -54,30 +49,16 @@ namespace ECommon.Socketing
 
         #region Public Properties
 
-        public Guid Id
-        {
-            get { return _id; }
-        }
+        public Guid Id { get; }
+        public string Name { get; }
         public bool IsConnected
         {
-            get { return _socket != null && _socket.Connected; }
+            get { return Socket != null && Socket.Connected; }
         }
-        public Socket Socket
-        {
-            get { return _socket; }
-        }
-        public EndPoint LocalEndPoint
-        {
-            get { return _localEndPoint; }
-        }
-        public EndPoint RemotingEndPoint
-        {
-            get { return _remotingEndPoint; }
-        }
-        public SocketSetting Setting
-        {
-            get { return _setting; }
-        }
+        public Socket Socket { get; private set; }
+        public EndPoint LocalEndPoint { get; }
+        public EndPoint RemotingEndPoint { get; }
+        public SocketSetting Setting { get; }
         public long PendingMessageCount
         {
             get { return _pendingMessageCount; }
@@ -85,29 +66,35 @@ namespace ECommon.Socketing
 
         #endregion
 
-        public TcpConnection(Socket socket, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
+        public TcpConnection(string name, Socket socket, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
         {
+            Ensure.NotNull(name, "name");
             Ensure.NotNull(socket, "socket");
             Ensure.NotNull(setting, "setting");
             Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
             Ensure.NotNull(connectionClosedHandler, "connectionClosedHandler");
 
-            _id = Guid.NewGuid();
-            _socket = socket;
-            _setting = setting;
+            Id = Guid.NewGuid();
+            Name = name;
+            Socket = socket;
+            Setting = setting;
             _receiveDataBufferPool = receiveDataBufferPool;
-            _localEndPoint = socket.LocalEndPoint;
-            _remotingEndPoint = socket.RemoteEndPoint;
+            LocalEndPoint = socket.LocalEndPoint;
+            RemotingEndPoint = socket.RemoteEndPoint;
             _messageArrivedHandler = messageArrivedHandler;
             _connectionClosedHandler = connectionClosedHandler;
 
-            _sendSocketArgs = new SocketAsyncEventArgs();
-            _sendSocketArgs.AcceptSocket = socket;
+            _sendSocketArgs = new SocketAsyncEventArgs
+            {
+                AcceptSocket = socket
+            };
             _sendSocketArgs.Completed += OnSendAsyncCompleted;
 
-            _receiveSocketArgs = new SocketAsyncEventArgs();
-            _receiveSocketArgs.AcceptSocket = socket;
+            _receiveSocketArgs = new SocketAsyncEventArgs
+            {
+                AcceptSocket = socket
+            };
             _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
             _receiveSocketArgs.UserToken = new ConcurrentQueue<ReceivedData>();
 
@@ -154,7 +141,7 @@ namespace ECommon.Socketing
                 {
                     _sendingStream.Write(segment.Array, segment.Offset, segment.Count);
                 }
-                if (_sendingStream.Length >= _setting.MaxSendPacketSize)
+                if (_sendingStream.Length >= Setting.MaxSendPacketSize)
                 {
                     break;
                 }
@@ -320,7 +307,7 @@ namespace ECommon.Socketing
             }
             catch (Exception ex)
             {
-                _logger.Error("Call message arrived handler failed.", ex);
+                _logger.Error(string.Format("TCP connection call message arrived handler has exception, name: {0}", Name), ex);
             }
         }
         private bool EnterReceiving()
@@ -367,7 +354,7 @@ namespace ECommon.Socketing
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error("Return receiving socket event buffer failed.", ex);
+                    _logger.Error(string.Format("TCP connection return receiving socket event buffer has exception, name: {0}", Name), ex);
                 }
 
                 Helper.EatException(() =>
@@ -386,13 +373,13 @@ namespace ECommon.Socketing
                     }
                 });
 
-                SocketUtils.ShutdownSocket(_socket);
+                SocketUtils.ShutdownSocket(Socket);
                 var isDisposedException = exception != null && exception is ObjectDisposedException;
                 if (!isDisposedException)
                 {
-                    _logger.InfoFormat("Socket closed, remote endpoint:{0}, socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception);
+                    _logger.InfoFormat("TCP connection closed, name: {0}, remoteEndPoint: {1}, socketError: {2}, reason: {3}, ex: {4}", Name, RemotingEndPoint, socketError, reason, exception);
                 }
-                _socket = null;
+                Socket = null;
 
                 if (_connectionClosedHandler != null)
                 {
@@ -402,7 +389,7 @@ namespace ECommon.Socketing
                     }
                     catch (Exception ex)
                     {
-                        _logger.Error("Call connection closed handler failed.", ex);
+                        _logger.Error(string.Format("TCP connection closed handler execution has exception, name: {0}", Name), ex);
                     }
                 }
             }
