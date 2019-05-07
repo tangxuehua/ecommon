@@ -114,6 +114,8 @@ namespace ECommon.Socketing
                 {
                     _logger.Error(string.Format("Socket server accept has exception, name: {0}, listeningEndPoint: {1}.", _name, _listeningEndPoint), ex);
                 }
+                //if socket exception cpu 100% and big log file
+                Task.Delay(200);
                 Task.Factory.StartNew(() => StartAccepting());
             }
         }
