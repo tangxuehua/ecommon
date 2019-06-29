@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using ECommon.Utilities;
@@ -9,7 +9,11 @@ namespace ECommon.Socketing
     {
         public static IPAddress GetLocalIPV4()
         {
-            return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(x => x.AddressFamily == AddressFamily.InterNetwork);
+           return  System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                  .Select(p => p.GetIPProperties())
+                  .SelectMany(p => p.UnicastAddresses)
+                  .Where(p => p.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(p.Address))
+                  .FirstOrDefault()?.Address;
         }
         public static Socket CreateSocket(int sendBufferSize, int receiveBufferSize)
         {
