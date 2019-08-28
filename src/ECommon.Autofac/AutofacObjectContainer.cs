@@ -1,6 +1,6 @@
-﻿using System;
-using Autofac;
+﻿using Autofac;
 using ECommon.Components;
+using System;
 
 namespace ECommon.Autofac
 {
@@ -9,18 +9,29 @@ namespace ECommon.Autofac
     public class AutofacObjectContainer : IObjectContainer
     {
         private readonly ContainerBuilder _containerBuilder;
-        private IContainer _container;
+        private ILifetimeScope _container;
 
         /// <summary>Default constructor.
         /// </summary>
         public AutofacObjectContainer() : this(new ContainerBuilder())
         {
         }
+
         /// <summary>Parameterized constructor.
         /// </summary>
         public AutofacObjectContainer(ContainerBuilder containerBuilder)
         {
             _containerBuilder = containerBuilder;
+        }
+
+        /// <summary>Represents the inner autofac container.
+        /// </summary>
+        public ILifetimeScope Container
+        {
+            get
+            {
+                return _container;
+            }
         }
 
         /// <summary>Represents the iner autofac container builder.
@@ -32,15 +43,6 @@ namespace ECommon.Autofac
                 return _containerBuilder;
             }
         }
-        /// <summary>Represents the inner autofac container.
-        /// </summary>
-        public IContainer Container
-        {
-            get
-            {
-                return _container;
-            }
-        }
 
         /// <summary>Build the container.
         /// </summary>
@@ -48,6 +50,45 @@ namespace ECommon.Autofac
         {
             _container = _containerBuilder.Build();
         }
+
+        /// <summary>Register a implementer type as a service implementation.
+        /// </summary>
+        /// <typeparam name="TService">The service type.</typeparam>
+        /// <typeparam name="TImplementer">The implementer type.</typeparam>
+        /// <param name="serviceName">The service name.</param>
+        /// <param name="life">The life cycle of the implementer type.</param>
+        public void Register<TService, TImplementer>(string serviceName = null, LifeStyle life = LifeStyle.Singleton)
+            where TService : class
+            where TImplementer : class, TService
+        {
+            var registrationBuilder = _containerBuilder.RegisterType<TImplementer>().As<TService>();
+            if (serviceName != null)
+            {
+                registrationBuilder.Named<TService>(serviceName);
+            }
+            if (life == LifeStyle.Singleton)
+            {
+                registrationBuilder.SingleInstance();
+            }
+        }
+
+        /// <summary>Register a implementer type instance as a service implementation.
+        /// </summary>
+        /// <typeparam name="TService">The service type.</typeparam>
+        /// <typeparam name="TImplementer">The implementer type.</typeparam>
+        /// <param name="instance">The implementer type instance.</param>
+        /// <param name="serviceName">The service name.</param>
+        public void RegisterInstance<TService, TImplementer>(TImplementer instance, string serviceName = null)
+            where TService : class
+            where TImplementer : class, TService
+        {
+            var registrationBuilder = _containerBuilder.RegisterInstance(instance).As<TService>().SingleInstance();
+            if (serviceName != null)
+            {
+                registrationBuilder.Named<TService>(serviceName);
+            }
+        }
+
         /// <summary>Register a implementation type.
         /// </summary>
         /// <param name="implementationType">The implementation type.</param>
@@ -80,6 +121,7 @@ namespace ECommon.Autofac
                 }
             }
         }
+
         /// <summary>Register a implementer type as a service implementation.
         /// </summary>
         /// <param name="serviceType">The service type.</param>
@@ -113,42 +155,7 @@ namespace ECommon.Autofac
                 }
             }
         }
-        /// <summary>Register a implementer type as a service implementation.
-        /// </summary>
-        /// <typeparam name="TService">The service type.</typeparam>
-        /// <typeparam name="TImplementer">The implementer type.</typeparam>
-        /// <param name="serviceName">The service name.</param>
-        /// <param name="life">The life cycle of the implementer type.</param>
-        public void Register<TService, TImplementer>(string serviceName = null, LifeStyle life = LifeStyle.Singleton)
-            where TService : class
-            where TImplementer : class, TService
-        {
-            var registrationBuilder = _containerBuilder.RegisterType<TImplementer>().As<TService>();
-            if (serviceName != null)
-            {
-                registrationBuilder.Named<TService>(serviceName);
-            }
-            if (life == LifeStyle.Singleton)
-            {
-                registrationBuilder.SingleInstance();
-            }
-        }
-        /// <summary>Register a implementer type instance as a service implementation.
-        /// </summary>
-        /// <typeparam name="TService">The service type.</typeparam>
-        /// <typeparam name="TImplementer">The implementer type.</typeparam>
-        /// <param name="instance">The implementer type instance.</param>
-        /// <param name="serviceName">The service name.</param>
-        public void RegisterInstance<TService, TImplementer>(TImplementer instance, string serviceName = null)
-            where TService : class
-            where TImplementer : class, TService
-        {
-            var registrationBuilder = _containerBuilder.RegisterInstance(instance).As<TService>().SingleInstance();
-            if (serviceName != null)
-            {
-                registrationBuilder.Named<TService>(serviceName);
-            }
-        }
+
         /// <summary>Resolve a service.
         /// </summary>
         /// <typeparam name="TService">The service type.</typeparam>
@@ -157,6 +164,7 @@ namespace ECommon.Autofac
         {
             return _container.Resolve<TService>();
         }
+
         /// <summary>Resolve a service.
         /// </summary>
         /// <param name="serviceType">The service type.</param>
@@ -165,24 +173,7 @@ namespace ECommon.Autofac
         {
             return _container.Resolve(serviceType);
         }
-        /// <summary>Try to retrieve a service from the container.
-        /// </summary>
-        /// <typeparam name="TService">The service type to resolve.</typeparam>
-        /// <param name="instance">The resulting component instance providing the service, or default(TService).</param>
-        /// <returns>True if a component providing the service is available.</returns>
-        public bool TryResolve<TService>(out TService instance) where TService : class
-        {
-            return _container.TryResolve(out instance);
-        }
-        /// <summary>Try to retrieve a service from the container.
-        /// </summary>
-        /// <param name="serviceType">The service type to resolve.</param>
-        /// <param name="instance">The resulting component instance providing the service, or null.</param>
-        /// <returns>True if a component providing the service is available.</returns>
-        public bool TryResolve(Type serviceType, out object instance)
-        {
-            return _container.TryResolve(serviceType, out instance);
-        }
+
         /// <summary>Resolve a service.
         /// </summary>
         /// <typeparam name="TService">The service type.</typeparam>
@@ -192,6 +183,7 @@ namespace ECommon.Autofac
         {
             return _container.ResolveNamed<TService>(serviceName);
         }
+
         /// <summary>Resolve a service.
         /// </summary>
         /// <param name="serviceName">The service name.</param>
@@ -201,6 +193,36 @@ namespace ECommon.Autofac
         {
             return _container.ResolveNamed(serviceName, serviceType);
         }
+
+        /// <summary>
+        /// Set container
+        /// </summary>
+        /// <param name="container">container</param>
+        public void SetContainer(ILifetimeScope container)
+        {
+            _container = container;
+        }
+
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <typeparam name="TService">The service type to resolve.</typeparam>
+        /// <param name="instance">The resulting component instance providing the service, or default(TService).</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public bool TryResolve<TService>(out TService instance) where TService : class
+        {
+            return _container.TryResolve(out instance);
+        }
+
+        /// <summary>Try to retrieve a service from the container.
+        /// </summary>
+        /// <param name="serviceType">The service type to resolve.</param>
+        /// <param name="instance">The resulting component instance providing the service, or null.</param>
+        /// <returns>True if a component providing the service is available.</returns>
+        public bool TryResolve(Type serviceType, out object instance)
+        {
+            return _container.TryResolve(serviceType, out instance);
+        }
+
         /// <summary>Try to retrieve a service from the container.
         /// </summary>
         /// <param name="serviceName">The name of the service to resolve.</param>
@@ -213,4 +235,3 @@ namespace ECommon.Autofac
         }
     }
 }
-
