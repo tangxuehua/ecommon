@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
-    <Version>2.6.0</Version>
+    <Version>2.6.1</Version>
     <Description>An infrastructure utility library written by c#.</Description>
     <AssemblyVersion>2.6.1.0</AssemblyVersion>
     <FileVersion>2.6.1.0</FileVersion>
@@ -14,7 +14,7 @@
     <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
-    <Copyright>2018</Copyright>
+    <Copyright>2019</Copyright>
     <PackageTags>Socket, IO</PackageTags>
   </PropertyGroup>
 
