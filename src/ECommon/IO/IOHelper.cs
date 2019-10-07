@@ -36,21 +36,21 @@ namespace ECommon.IO
 
         #region TryAsyncActionRecursively
 
-        public void TryAsyncActionRecursively<TAsyncResult>(
+        public void TryAsyncActionRecursively<TResult>(
             string asyncActionName,
-            Func<Task<TAsyncResult>> asyncAction,
+            Func<Task<TResult>> asyncAction,
             Action<int> mainAction,
-            Action<TAsyncResult> successAction,
+            Action<TResult> successAction,
             Func<string> getContextInfoFunc,
             Action<Exception, string> failedAction,
             int retryTimes,
             bool retryWhenFailed = false,
             int maxRetryTimes = 3,
-            int retryInterval = 1000) where TAsyncResult : AsyncTaskResult
+            int retryInterval = 1000)
         {
             try
             {
-                asyncAction().ContinueWith(TaskContinueAction, new TaskExecutionContext<TAsyncResult>
+                asyncAction().ContinueWith(TaskContinueAction, new TaskExecutionContext<TResult>
                 {
                     AsyncActionName = asyncActionName,
                     MainAction = mainAction,
@@ -195,9 +195,9 @@ namespace ECommon.IO
                 }
             }
         }
-        private void TaskContinueAction<TAsyncResult>(Task<TAsyncResult> task, object obj) where TAsyncResult : AsyncTaskResult
+        private void TaskContinueAction<TResult>(Task<TResult> task, object obj)
         {
-            var context = obj as TaskExecutionContext<TAsyncResult>;
+            var context = obj as TaskExecutionContext<TResult>;
             try
             {
                 if (task.Exception != null)
@@ -228,80 +228,7 @@ namespace ECommon.IO
                         string.Format("Async task '{0}' was cancelled.", context.AsyncActionName));
                     return;
                 }
-                var result = task.Result;
-                if (result == null)
-                {
-                    _logger.ErrorFormat("Async task '{0}' result is null, contextInfo:{1}, current retryTimes:{2}",
-                        context.AsyncActionName,
-                        GetContextInfo(context.GetContextInfoFunc),
-                        context.RetryTimes);
-                    if (context.RetryWhenFailed)
-                    {
-                        ExecuteRetryAction(
-                            context.AsyncActionName,
-                            context.GetContextInfoFunc,
-                            context.MainAction,
-                            context.RetryTimes,
-                            context.MaxRetryTimes,
-                            context.RetryInterval);
-                    }
-                    else
-                    {
-                        ExecuteFailedAction(
-                            context.AsyncActionName,
-                            context.GetContextInfoFunc,
-                            context.FailedAction,
-                            task.Exception,
-                            string.Format("Async task '{0}' result is null.", context.AsyncActionName));
-                    }
-                    return;
-                }
-                if (result.Status == AsyncTaskStatus.Success)
-                {
-                    context.SuccessAction?.Invoke(result);
-                }
-                else if (result.Status == AsyncTaskStatus.IOException)
-                {
-                    _logger.ErrorFormat("Async task '{0}' result status is io exception, contextInfo:{1}, current retryTimes:{2}, errorMsg:{3}, try to run the async task again.",
-                        context.AsyncActionName,
-                        GetContextInfo(context.GetContextInfoFunc),
-                        context.RetryTimes,
-                        result.ErrorMessage);
-                    ExecuteRetryAction(
-                        context.AsyncActionName,
-                        context.GetContextInfoFunc,
-                        context.MainAction,
-                        context.RetryTimes,
-                        context.MaxRetryTimes,
-                        context.RetryInterval);
-                }
-                else if (result.Status == AsyncTaskStatus.Failed)
-                {
-                    _logger.ErrorFormat("Async task '{0}' failed, contextInfo:{1}, current retryTimes:{2}, errorMsg:{3}",
-                        context.AsyncActionName,
-                        GetContextInfo(context.GetContextInfoFunc),
-                        context.RetryTimes,
-                        result.ErrorMessage);
-                    if (context.RetryWhenFailed)
-                    {
-                        ExecuteRetryAction(
-                            context.AsyncActionName,
-                            context.GetContextInfoFunc,
-                            context.MainAction,
-                            context.RetryTimes,
-                            context.MaxRetryTimes,
-                            context.RetryInterval);
-                    }
-                    else
-                    {
-                        ExecuteFailedAction(
-                            context.AsyncActionName,
-                            context.GetContextInfoFunc,
-                            context.FailedAction,
-                            task.Exception,
-                            result.ErrorMessage);
-                    }
-                }
+                context.SuccessAction?.Invoke(task.Result);
             }
             catch (Exception ex)
             {
@@ -353,11 +280,11 @@ namespace ECommon.IO
             }
         }
 
-        class TaskExecutionContext<TAsyncResult>
+        class TaskExecutionContext<TResult>
         {
             public string AsyncActionName;
             public Action<int> MainAction;
-            public Action<TAsyncResult> SuccessAction;
+            public Action<TResult> SuccessAction;
             public Func<string> GetContextInfoFunc;
             public Action<Exception, string> FailedAction;
             public int RetryTimes;
