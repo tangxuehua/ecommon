@@ -324,13 +324,13 @@ namespace ECommon.IO
                 throw new IOException(string.Format("{0} failed.", actionName), ex);
             }
         }
-        public Task TryIOActionAsync(Func<Task> action, string actionName)
+        public async Task TryIOActionAsync(Func<Task> action, string actionName)
         {
             Ensure.NotNull(action, "action");
             Ensure.NotNull(actionName, "actionName");
             try
             {
-                return action();
+                await action();
             }
             catch (IOException)
             {
@@ -358,13 +358,13 @@ namespace ECommon.IO
                 throw new IOException(string.Format("{0} failed.", funcName), ex);
             }
         }
-        public Task<T> TryIOFuncAsync<T>(Func<Task<T>> func, string funcName)
+        public async Task<T> TryIOFuncAsync<T>(Func<Task<T>> func, string funcName)
         {
             Ensure.NotNull(func, "func");
             Ensure.NotNull(funcName, "funcName");
             try
             {
-                return func();
+                return await func();
             }
             catch (IOException)
             {
