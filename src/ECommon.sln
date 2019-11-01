@@ -7,21 +7,23 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon", "ECommon\ECommon.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon.Dapper", "ECommon.Dapper\ECommon.Dapper.csproj", "{E53EC10F-ADF3-4917-AC29-D27CCE8DA181}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Autofac", "ECommon.Autofac\ECommon.Autofac.csproj", "{DEA789AD-000B-4B7F-B590-2AF8014DAE83}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon.Autofac", "ECommon.Autofac\ECommon.Autofac.csproj", "{DEA789AD-000B-4B7F-B590-2AF8014DAE83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Log4Net", "ECommon.Log4Net\ECommon.Log4Net.csproj", "{76847F19-9BC5-45B4-8EBB-79D79FDDBFF8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon.Log4Net", "ECommon.Log4Net\ECommon.Log4Net.csproj", "{76847F19-9BC5-45B4-8EBB-79D79FDDBFF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.JsonNet", "ECommon.JsonNet\ECommon.JsonNet.csproj", "{648D5756-BB7F-439E-8230-0D4CE39D9BDC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon.JsonNet", "ECommon.JsonNet\ECommon.JsonNet.csproj", "{648D5756-BB7F-439E-8230-0D4CE39D9BDC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PushMessageTestServer", "PushMessageTestServer\PushMessageTestServer.csproj", "{B58E7492-5791-42B4-B130-FF5E686864C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PushMessageTestServer", "PushMessageTestServer\PushMessageTestServer.csproj", "{B58E7492-5791-42B4-B130-FF5E686864C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PushMessageTestClient", "PushMessageTestClient\PushMessageTestClient.csproj", "{41160AEF-A7B9-4523-874E-E6F846B0D8C5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PushMessageTestClient", "PushMessageTestClient\PushMessageTestClient.csproj", "{41160AEF-A7B9-4523-874E-E6F846B0D8C5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemotingPerformanceTest.Server", "RemotingPerformanceTest.Server\RemotingPerformanceTest.Server.csproj", "{DF7B1E63-AA70-4855-A407-0F6BABDBF0C5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RemotingPerformanceTest.Server", "RemotingPerformanceTest.Server\RemotingPerformanceTest.Server.csproj", "{DF7B1E63-AA70-4855-A407-0F6BABDBF0C5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemotingPerformanceTest.Client", "RemotingPerformanceTest.Client\RemotingPerformanceTest.Client.csproj", "{24FE4927-AE88-456B-8E10-AE933B6158E8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RemotingPerformanceTest.Client", "RemotingPerformanceTest.Client\RemotingPerformanceTest.Client.csproj", "{24FE4927-AE88-456B-8E10-AE933B6158E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StoragePerfTest", "StoragePerfTest\StoragePerfTest.csproj", "{5B533998-056A-4241-B30D-B1CD44510949}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoragePerfTest", "StoragePerfTest\StoragePerfTest.csproj", "{5B533998-056A-4241-B30D-B1CD44510949}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Serilog", "ECommon.Serilog\ECommon.Serilog.csproj", "{81F48755-2E5D-41D9-978F-5DB09440AC12}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,10 @@ Global
 		{5B533998-056A-4241-B30D-B1CD44510949}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B533998-056A-4241-B30D-B1CD44510949}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B533998-056A-4241-B30D-B1CD44510949}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81F48755-2E5D-41D9-978F-5DB09440AC12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81F48755-2E5D-41D9-978F-5DB09440AC12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81F48755-2E5D-41D9-978F-5DB09440AC12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81F48755-2E5D-41D9-978F-5DB09440AC12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -6,6 +6,7 @@ using ECommon.Components;
 using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
+using ECommon.Serilog;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
 namespace PushMessageTestClient
@@ -27,7 +28,7 @@ namespace PushMessageTestClient
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net()
+                .UseSerilog()
                 .RegisterUnhandledExceptionHandler()
                 .BuildContainer();
 

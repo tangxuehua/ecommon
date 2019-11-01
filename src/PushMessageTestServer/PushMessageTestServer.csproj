@@ -13,14 +13,8 @@
     <ProjectReference Include="..\ECommon.Autofac\ECommon.Autofac.csproj" />
     <ProjectReference Include="..\ECommon.Dapper\ECommon.Dapper.csproj" />
     <ProjectReference Include="..\ECommon.JsonNet\ECommon.JsonNet.csproj" />
-    <ProjectReference Include="..\ECommon.Log4Net\ECommon.Log4Net.csproj" />
+    <ProjectReference Include="..\ECommon.Serilog\ECommon.Serilog.csproj" />
     <ProjectReference Include="..\ECommon\ECommon.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="log4net.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

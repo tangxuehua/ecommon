@@ -6,8 +6,6 @@ namespace ECommon.Logging
     /// </summary>
     public class EmptyLogger : ILogger
     {
-        #region ILogger Members
-
         public bool IsDebugEnabled
         {
             get
@@ -15,52 +13,65 @@ namespace ECommon.Logging
                 return false;
             }
         }
-        public void Debug(object message)
-        {
-        }
-        public void DebugFormat(string format, params object[] args)
-        {
-        }
-        public void Debug(object message, Exception exception)
-        {
-        }
-        public void Info(object message)
-        {
-        }
-        public void InfoFormat(string format, params object[] args)
-        {
-        }
-        public void Info(object message, Exception exception)
-        {
-        }
-        public void Error(object message)
-        {
-        }
-        public void ErrorFormat(string format, params object[] args)
-        {
-        }
-        public void Error(object message, Exception exception)
-        {
-        }
-        public void Warn(object message)
-        {
-        }
-        public void WarnFormat(string format, params object[] args)
-        {
-        }
-        public void Warn(object message, Exception exception)
-        {
-        }
-        public void Fatal(object message)
-        {
-        }
-        public void FatalFormat(string format, params object[] args)
-        {
-        }
-        public void Fatal(object message, Exception exception)
+
+        public void Debug(string message)
         {
         }
 
-        #endregion
+        public void Debug(string message, Exception exception)
+        {
+        }
+
+        public void DebugFormat(string format, params object[] args)
+        {
+        }
+
+        public void Error(string message)
+        {
+        }
+
+        public void Error(string message, Exception exception)
+        {
+        }
+
+        public void ErrorFormat(string format, params object[] args)
+        {
+        }
+
+        public void Fatal(string message)
+        {
+        }
+
+        public void Fatal(string message, Exception exception)
+        {
+        }
+
+        public void FatalFormat(string format, params object[] args)
+        {
+        }
+
+        public void Info(string message)
+        {
+        }
+
+        public void Info(string message, Exception exception)
+        {
+        }
+
+        public void InfoFormat(string format, params object[] args)
+        {
+        }
+
+        public void Warn(string message)
+        {
+        }
+
+        public void Warn(string message, Exception exception)
+        {
+        }
+
+        public void WarnFormat(string format, params object[] args)
+        {
+        }
     }
 }

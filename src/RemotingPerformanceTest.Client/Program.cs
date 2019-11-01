@@ -87,7 +87,7 @@ namespace RemotingPerformanceTest.Client
                     {
                         if (t.Exception != null)
                         {
-                            _logger.Error(t.Exception);
+                            _logger.Error("Request has exception.", t.Exception);
                             return;
                         }
                         var response = t.Result;

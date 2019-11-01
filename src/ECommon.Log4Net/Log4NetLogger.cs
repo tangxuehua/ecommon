@@ -24,7 +24,7 @@ namespace ECommon.Log4Net
         {
             get { return _log.IsDebugEnabled; }
         }
-        public void Debug(object message)
+        public void Debug(string message)
         {
             _log.Debug(message);
         }
@@ -32,11 +32,11 @@ namespace ECommon.Log4Net
         {
             _log.DebugFormat(format, args);
         }
-        public void Debug(object message, Exception exception)
+        public void Debug(string message, Exception exception)
         {
             _log.Debug(message, exception);
         }
-        public void Info(object message)
+        public void Info(string message)
         {
             _log.Info(message);
         }
@@ -44,11 +44,11 @@ namespace ECommon.Log4Net
         {
             _log.InfoFormat(format, args);
         }
-        public void Info(object message, Exception exception)
+        public void Info(string message, Exception exception)
         {
             _log.Info(message, exception);
         }
-        public void Error(object message)
+        public void Error(string message)
         {
             _log.Error(message);
         }
@@ -56,11 +56,11 @@ namespace ECommon.Log4Net
         {
             _log.ErrorFormat(format, args);
         }
-        public void Error(object message, Exception exception)
+        public void Error(string message, Exception exception)
         {
             _log.Error(message, exception);
         }
-        public void Warn(object message)
+        public void Warn(string message)
         {
             _log.Warn(message);
         }
@@ -68,11 +68,11 @@ namespace ECommon.Log4Net
         {
             _log.WarnFormat(format, args);
         }
-        public void Warn(object message, Exception exception)
+        public void Warn(string message, Exception exception)
         {
             _log.Warn(message, exception);
         }
-        public void Fatal(object message)
+        public void Fatal(string message)
         {
             _log.Fatal(message);
         }
@@ -80,7 +80,7 @@ namespace ECommon.Log4Net
         {
             _log.FatalFormat(format, args);
         }
-        public void Fatal(object message, Exception exception)
+        public void Fatal(string message, Exception exception)
         {
             _log.Fatal(message, exception);
         }

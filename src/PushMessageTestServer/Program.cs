@@ -22,7 +22,7 @@ namespace PushMessageTestServer
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net()
+                .UseSerilog()
                 .RegisterUnhandledExceptionHandler()
                 .BuildContainer();
 
