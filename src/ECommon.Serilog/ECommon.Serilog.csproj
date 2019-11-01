@@ -13,6 +13,7 @@
     <Copyright>2019</Copyright>
     <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
     <PackageTags>Logging</PackageTags>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
