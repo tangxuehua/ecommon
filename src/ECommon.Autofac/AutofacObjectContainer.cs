@@ -8,8 +8,12 @@ namespace ECommon.Autofac
     /// </summary>
     public class AutofacObjectContainer : IObjectContainer
     {
-        private readonly ContainerBuilder _containerBuilder;
-        private IContainer _container;
+        /// <summary>Represents the iner autofac container builder.
+        /// </summary>
+        public ContainerBuilder ContainerBuilder { get; }
+        /// <summary>Represents the inner autofac container.
+        /// </summary>
+        public IContainer Container { get; private set; }
 
         /// <summary>Default constructor.
         /// </summary>
@@ -20,33 +24,20 @@ namespace ECommon.Autofac
         /// </summary>
         public AutofacObjectContainer(ContainerBuilder containerBuilder)
         {
-            _containerBuilder = containerBuilder;
+            ContainerBuilder = containerBuilder;
         }
-
-        /// <summary>Represents the iner autofac container builder.
+        /// <summary>Parameterized constructor.
         /// </summary>
-        public ContainerBuilder ContainerBuilder
+        public AutofacObjectContainer(IContainer container)
         {
-            get
-            {
-                return _containerBuilder;
-            }
-        }
-        /// <summary>Represents the inner autofac container.
-        /// </summary>
-        public IContainer Container
-        {
-            get
-            {
-                return _container;
-            }
+            Container = container;
         }
 
         /// <summary>Build the container.
         /// </summary>
         public void Build()
         {
-            _container = _containerBuilder.Build();
+            Container = ContainerBuilder.Build();
         }
         /// <summary>Register a implementation type.
         /// </summary>
@@ -57,7 +48,7 @@ namespace ECommon.Autofac
         {
             if (implementationType.IsGenericType)
             {
-                var registrationBuilder = _containerBuilder.RegisterGeneric(implementationType);
+                var registrationBuilder = ContainerBuilder.RegisterGeneric(implementationType);
                 if (serviceName != null)
                 {
                     registrationBuilder.Named(serviceName, implementationType);
@@ -69,7 +60,7 @@ namespace ECommon.Autofac
             }
             else
             {
-                var registrationBuilder = _containerBuilder.RegisterType(implementationType);
+                var registrationBuilder = ContainerBuilder.RegisterType(implementationType);
                 if (serviceName != null)
                 {
                     registrationBuilder.Named(serviceName, implementationType);
@@ -90,7 +81,7 @@ namespace ECommon.Autofac
         {
             if (implementationType.IsGenericType)
             {
-                var registrationBuilder = _containerBuilder.RegisterGeneric(implementationType).As(serviceType);
+                var registrationBuilder = ContainerBuilder.RegisterGeneric(implementationType).As(serviceType);
                 if (serviceName != null)
                 {
                     registrationBuilder.Named(serviceName, implementationType);
@@ -102,7 +93,7 @@ namespace ECommon.Autofac
             }
             else
             {
-                var registrationBuilder = _containerBuilder.RegisterType(implementationType).As(serviceType);
+                var registrationBuilder = ContainerBuilder.RegisterType(implementationType).As(serviceType);
                 if (serviceName != null)
                 {
                     registrationBuilder.Named(serviceName, serviceType);
@@ -123,7 +114,7 @@ namespace ECommon.Autofac
             where TService : class
             where TImplementer : class, TService
         {
-            var registrationBuilder = _containerBuilder.RegisterType<TImplementer>().As<TService>();
+            var registrationBuilder = ContainerBuilder.RegisterType<TImplementer>().As<TService>();
             if (serviceName != null)
             {
                 registrationBuilder.Named<TService>(serviceName);
@@ -143,7 +134,7 @@ namespace ECommon.Autofac
             where TService : class
             where TImplementer : class, TService
         {
-            var registrationBuilder = _containerBuilder.RegisterInstance(instance).As<TService>().SingleInstance();
+            var registrationBuilder = ContainerBuilder.RegisterInstance(instance).As<TService>().SingleInstance();
             if (serviceName != null)
             {
                 registrationBuilder.Named<TService>(serviceName);
@@ -155,7 +146,7 @@ namespace ECommon.Autofac
         /// <returns>The component instance that provides the service.</returns>
         public TService Resolve<TService>() where TService : class
         {
-            return _container.Resolve<TService>();
+            return Container.Resolve<TService>();
         }
         /// <summary>Resolve a service.
         /// </summary>
@@ -163,7 +154,7 @@ namespace ECommon.Autofac
         /// <returns>The component instance that provides the service.</returns>
         public object Resolve(Type serviceType)
         {
-            return _container.Resolve(serviceType);
+            return Container.Resolve(serviceType);
         }
         /// <summary>Try to retrieve a service from the container.
         /// </summary>
@@ -172,7 +163,7 @@ namespace ECommon.Autofac
         /// <returns>True if a component providing the service is available.</returns>
         public bool TryResolve<TService>(out TService instance) where TService : class
         {
-            return _container.TryResolve(out instance);
+            return Container.TryResolve(out instance);
         }
         /// <summary>Try to retrieve a service from the container.
         /// </summary>
@@ -181,7 +172,7 @@ namespace ECommon.Autofac
         /// <returns>True if a component providing the service is available.</returns>
         public bool TryResolve(Type serviceType, out object instance)
         {
-            return _container.TryResolve(serviceType, out instance);
+            return Container.TryResolve(serviceType, out instance);
         }
         /// <summary>Resolve a service.
         /// </summary>
@@ -190,7 +181,7 @@ namespace ECommon.Autofac
         /// <returns>The component instance that provides the service.</returns>
         public TService ResolveNamed<TService>(string serviceName) where TService : class
         {
-            return _container.ResolveNamed<TService>(serviceName);
+            return Container.ResolveNamed<TService>(serviceName);
         }
         /// <summary>Resolve a service.
         /// </summary>
@@ -199,7 +190,7 @@ namespace ECommon.Autofac
         /// <returns>The component instance that provides the service.</returns>
         public object ResolveNamed(string serviceName, Type serviceType)
         {
-            return _container.ResolveNamed(serviceName, serviceType);
+            return Container.ResolveNamed(serviceName, serviceType);
         }
         /// <summary>Try to retrieve a service from the container.
         /// </summary>
@@ -209,7 +200,7 @@ namespace ECommon.Autofac
         /// <returns>True if a component providing the service is available.</returns>
         public bool TryResolveNamed(string serviceName, Type serviceType, out object instance)
         {
-            return _container.TryResolveNamed(serviceName, serviceType, out instance);
+            return Container.TryResolveNamed(serviceName, serviceType, out instance);
         }
     }
 }
