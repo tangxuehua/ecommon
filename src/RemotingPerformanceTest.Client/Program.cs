@@ -8,7 +8,6 @@ using ECommon.Components;
 using ECommon.Configurations;
 using ECommon.Logging;
 using ECommon.Remoting;
-using ECommon.Socketing;
 using ECommon.Utilities;
 using ECommonConfiguration = ECommon.Configurations.Configuration;
 
@@ -43,7 +42,7 @@ namespace RemotingPerformanceTest.Client
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net()
+                .UseSerilog()
                 .RegisterUnhandledExceptionHandler()
                 .BuildContainer();
 

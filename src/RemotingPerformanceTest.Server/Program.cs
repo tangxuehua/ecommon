@@ -16,7 +16,7 @@ namespace RemotingPerformanceTest.Server
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net()
+                .UseSerilog()
                 .RegisterUnhandledExceptionHandler()
                 .BuildContainer();
 

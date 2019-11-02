@@ -25,7 +25,7 @@ namespace StoragePerfTest
                 .Create()
                 .UseAutofac()
                 .RegisterCommonComponents()
-                .UseLog4Net()
+                .UseSerilog()
                 .RegisterUnhandledExceptionHandler()
                 .BuildContainer();
 
