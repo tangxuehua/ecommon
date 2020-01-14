@@ -31,7 +31,7 @@ namespace ECommon.Serilog
                     flushToDiskInterval: new TimeSpan(0, 0, 1))
                 .CreateLogger()));
         }
-        public void AddFileLogger(string loggerName, string loggerFileName, LogEventLevel minimumLevel = LogEventLevel.Information)
+        public SerilogLoggerFactory AddFileLogger(string loggerName, string loggerFileName, LogEventLevel minimumLevel = LogEventLevel.Information)
         {
             _loggerDict.TryAdd(loggerName, new SerilogLogger("logger", new LoggerConfiguration()
                 .MinimumLevel.Verbose()
@@ -45,10 +45,17 @@ namespace ECommon.Serilog
                     retainedFileCountLimit: null,
                     flushToDiskInterval: new TimeSpan(0, 0, 1))
                 .CreateLogger()));
+            return this;
         }
-        public void AddFileLogger(string loggerName, string contextPropertyName, Logger logger)
+        public SerilogLoggerFactory AddFileLogger(string loggerName, string contextPropertyName, Logger logger)
         {
             _loggerDict.TryAdd(loggerName, new SerilogLogger(contextPropertyName, logger));
+            return this;
+        }
+        public SerilogLoggerFactory AddFileLogger(string loggerName, SerilogLogger logger)
+        {
+            _loggerDict.TryAdd(loggerName, logger);
+            return this;
         }
 
         public Logging.ILogger Create(string name)

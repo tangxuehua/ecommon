@@ -179,7 +179,7 @@ namespace ECommon.IO
                 && ((AggregateException)exception).InnerExceptions.IsNotEmpty()
                 && ((AggregateException)exception).InnerExceptions.Any(x => x is IOException))
             {
-                _logger.Error(string.Format("Async task '{0}' has io exception, contextInfo:{1}, current retryTimes:{2}, try to run the async task again.", asyncActionName, GetContextInfo(getContextInfoFunc), currentRetryTimes), exception);
+                _logger.Error(string.Format("Async task '{0}' has aggregate exception, contextInfo:{1}, current retryTimes:{2}, try to run the async task again.", asyncActionName, GetContextInfo(getContextInfoFunc), currentRetryTimes), exception);
                 ExecuteRetryAction(asyncActionName, getContextInfoFunc, mainAction, currentRetryTimes, maxRetryTimes, retryInterval);
             }
             else
@@ -191,7 +191,8 @@ namespace ECommon.IO
                 }
                 else
                 {
-                    ExecuteFailedAction(asyncActionName, getContextInfoFunc, failedAction, exception, exception.Message);
+                    var realException = GetRealException(exception);
+                    ExecuteFailedAction(asyncActionName, getContextInfoFunc, failedAction, realException, realException.Message);
                 }
             }
         }
@@ -278,6 +279,14 @@ namespace ECommon.IO
                     context.AsyncActionName,
                     GetContextInfo(context.GetContextInfoFunc)), ex);
             }
+        }
+        private Exception GetRealException(Exception exception)
+        {
+            if (exception is AggregateException && ((AggregateException)exception).InnerExceptions.IsNotEmpty())
+            {
+                return ((AggregateException)exception).InnerExceptions.First();
+            }
+            return exception;
         }
 
         class TaskExecutionContext<TResult>
