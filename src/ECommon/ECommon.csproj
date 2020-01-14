@@ -4,10 +4,10 @@
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
-    <Version>2.6.3</Version>
+    <Version>2.6.4</Version>
     <Description>An infrastructure utility library written by c#.</Description>
-    <AssemblyVersion>2.6.2.0</AssemblyVersion>
-    <FileVersion>2.6.2.0</FileVersion>
+    <AssemblyVersion>2.6.4.0</AssemblyVersion>
+    <FileVersion>2.6.4.0</FileVersion>
     <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

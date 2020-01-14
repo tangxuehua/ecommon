@@ -14,6 +14,7 @@
     <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
     <PackageTags>Logging</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
