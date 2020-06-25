@@ -7,10 +7,12 @@
     <Company>tangxuehua</Company>
     <Product>ECommon</Product>
     <Description>JSON extension for ECommon.</Description>
-    <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
+    <PackageLicenseFile>license.txt</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -27,6 +29,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ECommon\ECommon.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\doc\logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="..\..\license.txt">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -6,15 +6,17 @@
     <Company>tangxuehua</Company>
     <Product>ECommon.Serilog</Product>
     <Description>Serilog extension for ECommon.</Description>
-    <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <Copyright>2019</Copyright>
-    <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
+    <Copyright>2020</Copyright>
+    <PackageIconUrl></PackageIconUrl>
     <PackageTags>Logging</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
+    <PackageLicenseFile>license.txt</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -34,6 +36,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ECommon\ECommon.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\doc\logo.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="..\..\license.txt">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
