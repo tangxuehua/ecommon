@@ -27,7 +27,7 @@ namespace ECommon.Storage
             return array;
         }
 
-        public static ChunkFooter FromStream(BinaryReader reader, Stream stream)
+        public static ChunkFooter FromStream(BinaryReader reader)
         {
             var chunkDataTotalSize = reader.ReadInt32();
             return new ChunkFooter(chunkDataTotalSize);

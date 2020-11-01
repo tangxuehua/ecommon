@@ -12,6 +12,9 @@ namespace ECommon.Storage
         /// <summary>Chunk文件命名规则策略；
         /// </summary>
         public readonly IFileNamingStrategy FileNamingStrategy;
+        /// <summary>ChunkHeader的BloomFilter的大小
+        /// </summary>
+        public readonly int ChunkHeaderBloomFilterSize;
         /// <summary>Chunk文件大小，字节为单位，适用于文件内记录大小不固定的场景，如果是固定大小，则设置为0；
         /// </summary>
         public readonly int ChunkDataSize;
@@ -72,6 +75,7 @@ namespace ECommon.Storage
 
         public ChunkManagerConfig(string basePath,
                                IFileNamingStrategy fileNamingStrategy,
+                               int chunkHeaderBloomFilterSize,
                                int chunkDataSize,
                                int chunkDataUnitSize,
                                int chunkDataCount,
@@ -92,6 +96,7 @@ namespace ECommon.Storage
         {
             Ensure.NotNullOrEmpty(basePath, "basePath");
             Ensure.NotNull(fileNamingStrategy, "fileNamingStrategy");
+            Ensure.Nonnegative(chunkHeaderBloomFilterSize, "chunkHeaderBloomFilterSize");
             Ensure.Nonnegative(chunkDataSize, "chunkDataSize");
             Ensure.Nonnegative(chunkDataUnitSize, "chunkDataUnitSize");
             Ensure.Nonnegative(chunkDataCount, "chunkDataCount");
@@ -112,6 +117,7 @@ namespace ECommon.Storage
 
             BasePath = basePath;
             FileNamingStrategy = fileNamingStrategy;
+            ChunkHeaderBloomFilterSize = chunkHeaderBloomFilterSize;
             ChunkDataSize = chunkDataSize;
             ChunkDataUnitSize = chunkDataUnitSize;
             ChunkDataCount = chunkDataCount;
@@ -130,6 +136,10 @@ namespace ECommon.Storage
             ChunkLocalCacheSize = chunkLocalCacheSize;
             EnableChunkStatistic = enableChunkStatistic;
 
+            if (ChunkHeaderBloomFilterSize > 1024 * 1024 * 10)
+            {
+                throw new ArgumentException("Chunk bloom filter size cannot bigger than 10M");
+            }
             if (GetChunkDataSize() > 1024 * 1024 * 1024)
             {
                 throw new ArgumentException("Chunk data size cannot bigger than 1G");

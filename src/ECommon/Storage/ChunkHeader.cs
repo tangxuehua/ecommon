@@ -11,15 +11,16 @@ namespace ECommon.Storage
         public readonly int ChunkDataTotalSize;
         public readonly long ChunkDataStartPosition;
         public readonly long ChunkDataEndPosition;
+        public readonly int BloomFilterSize;
 
-        public ChunkHeader(int chunkNumber, int chunkDataTotalSize)
+        public ChunkHeader(int chunkNumber, int chunkDataTotalSize, int bloomFilterSize)
         {
             Ensure.Nonnegative(chunkNumber, "chunkNumber");
             Ensure.Positive(chunkDataTotalSize, "chunkDataTotalSize");
 
             ChunkNumber = chunkNumber;
             ChunkDataTotalSize = chunkDataTotalSize;
-
+            BloomFilterSize = bloomFilterSize;
             ChunkDataStartPosition = ChunkNumber * (long)ChunkDataTotalSize;
             ChunkDataEndPosition = (ChunkNumber + 1) * (long)ChunkDataTotalSize;
         }
@@ -33,15 +34,17 @@ namespace ECommon.Storage
                 {
                     writer.Write(ChunkNumber);
                     writer.Write(ChunkDataTotalSize);
+                    writer.Write(BloomFilterSize);
                 }
             }
             return array;
         }
-        public static ChunkHeader FromStream(BinaryReader reader, Stream stream)
+        public ChunkHeader FromStream(BinaryReader reader)
         {
             var chunkNumber = reader.ReadInt32();
             var chunkDataTotalSize = reader.ReadInt32();
-            return new ChunkHeader(chunkNumber, chunkDataTotalSize);
+            var bloomFilterSize = reader.ReadInt32();
+            return new ChunkHeader(chunkNumber, chunkDataTotalSize, bloomFilterSize);
         }
 
         public int GetLocalDataPosition(long globalDataPosition)
@@ -55,11 +58,12 @@ namespace ECommon.Storage
 
         public override string ToString()
         {
-            return string.Format("[ChunkNumber:{0}, ChunkDataTotalSize:{1}, ChunkDataStartPosition:{2}, ChunkDataEndPosition:{3}]",
+            return string.Format("[ChunkNumber:{0}, ChunkDataTotalSize:{1}, ChunkDataStartPosition:{2}, ChunkDataEndPosition:{3}, BloomFilterSize:{4}]",
                                  ChunkNumber,
                                  ChunkDataTotalSize,
                                  ChunkDataStartPosition,
-                                 ChunkDataEndPosition);
+                                 ChunkDataEndPosition,
+                                 BloomFilterSize);
         }
     }
 }

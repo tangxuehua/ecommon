@@ -44,6 +44,7 @@ namespace StoragePerfTest
             var chunkManagerConfig = new ChunkManagerConfig(
                 Path.Combine(storeRootPath, @"sample-chunks"),
                 new DefaultFileNamingStrategy("message-chunk-"),
+                0,
                 chunkSize,
                 0,
                 0,

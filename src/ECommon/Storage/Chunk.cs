@@ -9,6 +9,7 @@ using ECommon.Components;
 using ECommon.Logging;
 using ECommon.Utilities;
 using ECommon.Storage.Exceptions;
+using System.Text;
 
 namespace ECommon.Storage
 {
@@ -32,6 +33,7 @@ namespace ECommon.Storage
         private readonly object _freeMemoryObj = new object();
 
         private int _dataPosition;
+        private int _bloomFilterSize;
         private bool _isCompleted;
         private bool _isDestroying;
         private bool _isMemoryFreed;
@@ -218,21 +220,11 @@ namespace ECommon.Storage
         }
         private void InitNew(int chunkNumber)
         {
-            var chunkDataSize = 0;
-            if (_chunkConfig.ChunkDataSize > 0)
-            {
-                chunkDataSize = _chunkConfig.ChunkDataSize;
-            }
-            else
-            {
-                chunkDataSize = _chunkConfig.ChunkDataUnitSize * _chunkConfig.ChunkDataCount;
-            }
-
-            _chunkHeader = new ChunkHeader(chunkNumber, chunkDataSize);
+            _chunkHeader = new ChunkHeader(chunkNumber, _chunkConfig.GetChunkDataSize(), _chunkConfig.ChunkHeaderBloomFilterSize);
 
             _isCompleted = false;
 
-            var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + ChunkFooter.Size;
+            var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + _chunkHeader.BloomFilterSize + ChunkFooter.Size;
 
             var writeStream = default(Stream);
             var tempFilename = string.Format("{0}.{1}.tmp", _filename, Guid.NewGuid());
@@ -351,7 +343,7 @@ namespace ECommon.Storage
 
             if (_isMemoryChunk)
             {
-                var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + ChunkFooter.Size;
+                var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + _chunkHeader.BloomFilterSize + ChunkFooter.Size;
                 _cachedLength = fileSize;
                 _cachedData = Marshal.AllocHGlobal(_cachedLength);
                 writeStream = new UnmanagedMemoryStream((byte*)_cachedData, _cachedLength, _cachedLength, FileAccess.ReadWrite);
@@ -690,6 +682,37 @@ namespace ECommon.Storage
 
             return RecordWriteResult.Successful(position);
         }
+        public void WriteBloomFilter(string minKey, string maxKey, byte[] bloomFilterBytes)
+        {
+            if (_chunkHeader.BloomFilterSize <= 0)
+            {
+                throw new ChunkWriteException(ToString(), "Chunk header bloom filter size is not configed, so we cannot write bloom filter.");
+            }
+            if (bloomFilterBytes.Length > _chunkHeader.BloomFilterSize)
+            {
+                throw new ChunkWriteException(ToString(), string.Format("Bloom filter bytes exceed max size, bytes size: {0}, maxSize: {1}", bloomFilterBytes.Length, _chunkHeader.BloomFilterSize));
+            }
+
+            var minKeyBytes = Encoding.UTF8.GetBytes(minKey);
+            var maxKeyBytes = Encoding.UTF8.GetBytes(maxKey);
+            var bloomFilter = new byte[_chunkHeader.BloomFilterSize + sizeof(int) * 3 + minKeyBytes.Length + maxKeyBytes.Length];
+            using (var stream = new MemoryStream(bloomFilter))
+            {
+                using (var writer = new BinaryWriter(stream))
+                {
+                    writer.Write(minKeyBytes.Length);
+                    writer.Write(minKeyBytes);
+
+                    writer.Write(maxKeyBytes.Length);
+                    writer.Write(maxKeyBytes);
+
+                    writer.Write(bloomFilterBytes.Length);
+                    writer.Write(bloomFilterBytes);
+                }
+            }
+            _writerWorkItem.AppendData(bloomFilter, 0, bloomFilter.Length);
+            _bloomFilterSize = bloomFilter.Length;
+        }
         public void Flush()
         {
             if (_isMemoryChunk || _isCompleted) return;
@@ -956,6 +979,7 @@ namespace ECommon.Storage
         private ChunkFooter WriteFooter()
         {
             var currentTotalDataSize = DataPosition;
+            var bloomFilterSize = _bloomFilterSize;
 
             //如果是固定大小的数据，则检查总数据大小是否正确
             if (IsFixedDataSize())
@@ -977,7 +1001,7 @@ namespace ECommon.Storage
             Flush(); // trying to prevent bug with resized file, but no data in it
 
             var oldStreamLength = workItem.WorkingStream.Length;
-            var newStreamLength = ChunkHeader.Size + currentTotalDataSize + ChunkFooter.Size;
+            var newStreamLength = ChunkHeader.Size + currentTotalDataSize + bloomFilterSize + ChunkFooter.Size;
 
             if (newStreamLength != oldStreamLength)
             {
@@ -993,7 +1017,7 @@ namespace ECommon.Storage
                 throw new Exception(string.Format("Chunk file '{0}' is too short to even read ChunkHeader, its size is {1} bytes.", _filename, stream.Length));
             }
             stream.Seek(0, SeekOrigin.Begin);
-            return ChunkHeader.FromStream(reader, stream);
+            return ChunkHeader.FromStream(reader);
         }
         private ChunkFooter ReadFooter(FileStream stream, BinaryReader reader)
         {
@@ -1002,11 +1026,7 @@ namespace ECommon.Storage
                 throw new Exception(string.Format("Chunk file '{0}' is too short to even read ChunkFooter, its size is {1} bytes.", _filename, stream.Length));
             }
             stream.Seek(-ChunkFooter.Size, SeekOrigin.End);
-            return ChunkFooter.FromStream(reader, stream);
-        }
-        private int GetChunkSize(ChunkHeader chunkHeader)
-        {
-            return ChunkHeader.Size + chunkHeader.ChunkDataTotalSize + ChunkFooter.Size;
+            return ChunkFooter.FromStream(reader);
         }
 
         private T TryReadForwardInternal<T>(ReaderWorkItem readerWorkItem, long dataPosition, Func<byte[], T> readRecordFunc) where T : ILogRecord
