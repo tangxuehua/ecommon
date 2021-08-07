@@ -13,7 +13,7 @@ namespace ECommon.Autofac
         public ContainerBuilder ContainerBuilder { get; }
         /// <summary>Represents the inner autofac container.
         /// </summary>
-        public IContainer Container { get; private set; }
+        public IContainer Container { get; set; }
 
         /// <summary>Default constructor.
         /// </summary>
