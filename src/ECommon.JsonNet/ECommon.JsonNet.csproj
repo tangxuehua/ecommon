@@ -1,32 +1,35 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <Version>2.5.1</Version>
-    <Authors>tangxuehua</Authors>
-    <Company>tangxuehua</Company>
-    <Product>ECommon</Product>
-    <Description>JSON extension for ECommon.</Description>
-    <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
-    <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.1</TargetFrameworks>
+		<Version>2.5.2</Version>
+		<AssemblyVersion>2.5.2.0</AssemblyVersion>
+		<FileVersion>2.5.2.0</FileVersion>
+		<Authors>tangxuehua</Authors>
+		<Company>tangxuehua</Company>
+		<Product>ECommon</Product>
+		<Description>JSON extension for ECommon.</Description>
+		<Copyright>2021</Copyright>
+		<PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
+		<RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>bin\Release\netstandard2.0\ECommon.JsonNet.xml</DocumentationFile>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<DocumentationFile>bin\Release\netstandard2.1\ECommon.JsonNet.xml</DocumentationFile>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
-    <NoWarn>1591</NoWarn>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.1|AnyCPU'">
+		<NoWarn>1591</NoWarn>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ECommon\ECommon.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\ECommon\ECommon.csproj" />
+	</ItemGroup>
 
 </Project>

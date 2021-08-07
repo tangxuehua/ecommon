@@ -7,11 +7,15 @@ using Serilog.Events;
 
 namespace ECommon.Serilog
 {
+    /// <summary>基于Serilog的ILoggerFactory实现
+    /// </summary>
     public class SerilogLoggerFactory : ILoggerFactory
     {
         private readonly string _defaultLoggerName;
         private readonly ConcurrentDictionary<string, SerilogLogger> _loggerDict = new ConcurrentDictionary<string, SerilogLogger>();
 
+        /// <summary>构造函数
+        /// </summary>
         public SerilogLoggerFactory(string defaultLoggerName = "default", string defaultLoggerFileName = "default", LogEventLevel consoleMinimumLevel = LogEventLevel.Information, LogEventLevel fileMinimumLevel = LogEventLevel.Information)
         {
             _defaultLoggerName = defaultLoggerName;
@@ -31,6 +35,9 @@ namespace ECommon.Serilog
                     flushToDiskInterval: new TimeSpan(0, 0, 1))
                 .CreateLogger()));
         }
+
+        /// <summary>添加一个FileLogger
+        /// </summary>
         public SerilogLoggerFactory AddFileLogger(string loggerName, string loggerFileName, LogEventLevel minimumLevel = LogEventLevel.Information)
         {
             _loggerDict.TryAdd(loggerName, new SerilogLogger("logger", new LoggerConfiguration()
@@ -47,22 +54,32 @@ namespace ECommon.Serilog
                 .CreateLogger()));
             return this;
         }
+
+        /// <summary>添加一个FileLogger
+        /// </summary>
         public SerilogLoggerFactory AddFileLogger(string loggerName, string contextPropertyName, Logger logger)
         {
             _loggerDict.TryAdd(loggerName, new SerilogLogger(contextPropertyName, logger));
             return this;
         }
+
+        /// <summary>添加一个FileLogger
+        /// </summary>
         public SerilogLoggerFactory AddFileLogger(string loggerName, SerilogLogger logger)
         {
             _loggerDict.TryAdd(loggerName, logger);
             return this;
         }
 
+        /// <summary>获取一个ILogger
+        /// </summary>
         public Logging.ILogger Create(string name)
         {
             return GetLogger(name);
         }
 
+        /// <summary>获取一个ILogger
+        /// </summary>
         public Logging.ILogger Create(Type type)
         {
             return GetLogger(type.FullName);

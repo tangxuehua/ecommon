@@ -1,20 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <Authors>tangxuehua</Authors>
     <Company>tangxuehua</Company>
-    <Version>2.6.4</Version>
-    <Description>An infrastructure utility library written by c#.</Description>
-    <AssemblyVersion>2.6.4.0</AssemblyVersion>
-    <FileVersion>2.6.4.0</FileVersion>
+    <Version>2.6.5</Version>
+    <AssemblyVersion>2.6.5.0</AssemblyVersion>
+    <FileVersion>2.6.5.0</FileVersion>
+	<Description>An infrastructure utility library written by c#.</Description>
     <PackageLicenseUrl>https://github.com/tangxuehua/ecommon/blob/master/license.txt</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/tangxuehua/ecommon.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/tangxuehua/ecommon</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageIconUrl>https://raw.github.com/tangxuehua/ecommon/master/doc/logo.png</PackageIconUrl>
-    <Copyright>2019</Copyright>
+    <Copyright>2021</Copyright>
     <PackageTags>Socket, IO</PackageTags>
   </PropertyGroup>
 
@@ -24,10 +24,10 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DocumentationFile>bin\Release\netstandard2.0\ECommon.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\netstandard2.1\ECommon.xml</DocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.1|AnyCPU'">
     <NoWarn>1591</NoWarn>
   </PropertyGroup>
 
