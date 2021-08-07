@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26730.16
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon", "ECommon\ECommon.csproj", "{380BE5BE-FB38-4291-A331-2C273221E172}"
 EndProject
@@ -23,7 +23,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RemotingPerformanceTest.Cli
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StoragePerfTest", "StoragePerfTest\StoragePerfTest.csproj", "{5B533998-056A-4241-B30D-B1CD44510949}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ECommon.Serilog", "ECommon.Serilog\ECommon.Serilog.csproj", "{81F48755-2E5D-41D9-978F-5DB09440AC12}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECommon.Serilog", "ECommon.Serilog\ECommon.Serilog.csproj", "{81F48755-2E5D-41D9-978F-5DB09440AC12}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9BBD61D2-0594-4E63-A1F1-150D0A98137C}"
+	ProjectSection(SolutionItems) = preProject
+		TODO.txt = TODO.txt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

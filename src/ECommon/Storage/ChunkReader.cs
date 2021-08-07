@@ -9,10 +9,9 @@ namespace ECommon.Storage
         private readonly ChunkManager _chunkManager;
         private readonly ChunkWriter _chunkWriter;
 
-        public ChunkReader(ChunkManager chunkManager, ChunkWriter chunkWriter)
+        public ChunkReader(ChunkManager chunkManager, ChunkWriter chunkWriter = null)
         {
             Ensure.NotNull(chunkManager, "chunkManager");
-            Ensure.NotNull(chunkWriter, "chunkWriter");
 
             _chunkManager = chunkManager;
             _chunkWriter = chunkWriter;
@@ -20,7 +19,7 @@ namespace ECommon.Storage
 
         public T TryReadAt<T>(long position, Func<byte[], T> readRecordFunc, bool autoCache = true) where T : class, ILogRecord
         {
-            var lastChunk = _chunkWriter.CurrentChunk;
+            var lastChunk = _chunkWriter != null ? _chunkWriter.CurrentChunk : _chunkManager.GetLastChunk();
             var maxPosition = lastChunk.GlobalDataPosition;
             if (position >= maxPosition)
             {

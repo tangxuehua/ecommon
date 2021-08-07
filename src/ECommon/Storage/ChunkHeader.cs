@@ -4,23 +4,30 @@ using ECommon.Utilities;
 
 namespace ECommon.Storage
 {
+    public enum ChunkType
+    {
+        Default = 0,
+        Index
+    }
     public class ChunkHeader
     {
         public const int Size = 128;
         public readonly int ChunkNumber;
+        public ChunkType ChunkType;
+        public readonly int Version;
         public readonly int ChunkDataTotalSize;
         public readonly long ChunkDataStartPosition;
         public readonly long ChunkDataEndPosition;
-        public readonly int BloomFilterSize;
 
-        public ChunkHeader(int chunkNumber, int chunkDataTotalSize, int bloomFilterSize)
+        public ChunkHeader(int chunkNumber, int chunkDataTotalSize, ChunkType chunkType = ChunkType.Default, int version = 0)
         {
             Ensure.Nonnegative(chunkNumber, "chunkNumber");
             Ensure.Positive(chunkDataTotalSize, "chunkDataTotalSize");
 
             ChunkNumber = chunkNumber;
             ChunkDataTotalSize = chunkDataTotalSize;
-            BloomFilterSize = bloomFilterSize;
+            ChunkType = chunkType;
+            Version = version;
             ChunkDataStartPosition = ChunkNumber * (long)ChunkDataTotalSize;
             ChunkDataEndPosition = (ChunkNumber + 1) * (long)ChunkDataTotalSize;
         }
@@ -34,17 +41,19 @@ namespace ECommon.Storage
                 {
                     writer.Write(ChunkNumber);
                     writer.Write(ChunkDataTotalSize);
-                    writer.Write(BloomFilterSize);
+                    writer.Write(Convert.ToInt32(ChunkType));
+                    writer.Write(Version);
                 }
             }
             return array;
         }
-        public ChunkHeader FromStream(BinaryReader reader)
+        public static ChunkHeader FromStream(BinaryReader reader)
         {
             var chunkNumber = reader.ReadInt32();
             var chunkDataTotalSize = reader.ReadInt32();
-            var bloomFilterSize = reader.ReadInt32();
-            return new ChunkHeader(chunkNumber, chunkDataTotalSize, bloomFilterSize);
+            var chunkType = reader.ReadInt32();
+            var version = reader.ReadInt32();
+            return new ChunkHeader(chunkNumber, chunkDataTotalSize, (ChunkType)chunkType, version);
         }
 
         public int GetLocalDataPosition(long globalDataPosition)
@@ -58,12 +67,13 @@ namespace ECommon.Storage
 
         public override string ToString()
         {
-            return string.Format("[ChunkNumber:{0}, ChunkDataTotalSize:{1}, ChunkDataStartPosition:{2}, ChunkDataEndPosition:{3}, BloomFilterSize:{4}]",
+            return string.Format("[ChunkNumber:{0}, ChunkType:{1}, Version:{2}, ChunkDataTotalSize:{3}, ChunkDataStartPosition:{4}, ChunkDataEndPosition:{5}]",
                                  ChunkNumber,
+                                 ChunkType,
+                                 Version,
                                  ChunkDataTotalSize,
                                  ChunkDataStartPosition,
-                                 ChunkDataEndPosition,
-                                 BloomFilterSize);
+                                 ChunkDataEndPosition);
         }
     }
 }

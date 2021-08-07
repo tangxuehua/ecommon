@@ -12,9 +12,12 @@ namespace ECommon.Storage
         /// <summary>Chunk文件命名规则策略；
         /// </summary>
         public readonly IFileNamingStrategy FileNamingStrategy;
-        /// <summary>ChunkHeader的BloomFilter的大小
+        /// <summary>Chunk的类型
         /// </summary>
-        public readonly int ChunkHeaderBloomFilterSize;
+        public readonly ChunkType ChunkType;
+        /// <summary>Chunk的BloomFilter的大小
+        /// </summary>
+        public readonly int ChunkBloomFilterSize;
         /// <summary>Chunk文件大小，字节为单位，适用于文件内记录大小不固定的场景，如果是固定大小，则设置为0；
         /// </summary>
         public readonly int ChunkDataSize;
@@ -75,7 +78,34 @@ namespace ECommon.Storage
 
         public ChunkManagerConfig(string basePath,
                                IFileNamingStrategy fileNamingStrategy,
-                               int chunkHeaderBloomFilterSize,
+                               int chunkDataSize,
+                               int chunkDataUnitSize,
+                               int chunkDataCount,
+                               int flushChunkIntervalMilliseconds,
+                               bool enableCache,
+                               bool syncFlush,
+                               FlushOption flushOption,
+                               int chunkReaderCount,
+                               int maxLogRecordSize,
+                               int chunkWriteBuffer,
+                               int chunkReadBuffer,
+                               int chunkCacheMaxCount,
+                               int chunkCacheMinCount,
+                               int preCacheChunkCount,
+                               int chunkInactiveTimeMaxSeconds,
+                               int chunkLocalCacheSize,
+                               bool enableChunkStatistic) : this(
+                                   basePath, fileNamingStrategy, ChunkType.Default, 0, chunkDataSize, chunkDataUnitSize, chunkDataCount,
+                                   flushChunkIntervalMilliseconds, enableCache, syncFlush, flushOption, chunkReaderCount, maxLogRecordSize,
+                                   chunkWriteBuffer, chunkReadBuffer, chunkCacheMaxCount, chunkCacheMinCount, preCacheChunkCount,
+                                   chunkInactiveTimeMaxSeconds, chunkLocalCacheSize, enableChunkStatistic)
+        {
+            
+        }
+        public ChunkManagerConfig(string basePath,
+                               IFileNamingStrategy fileNamingStrategy,
+                               ChunkType chunkType,
+                               int chunkBloomFilterSize,
                                int chunkDataSize,
                                int chunkDataUnitSize,
                                int chunkDataCount,
@@ -96,7 +126,7 @@ namespace ECommon.Storage
         {
             Ensure.NotNullOrEmpty(basePath, "basePath");
             Ensure.NotNull(fileNamingStrategy, "fileNamingStrategy");
-            Ensure.Nonnegative(chunkHeaderBloomFilterSize, "chunkHeaderBloomFilterSize");
+            Ensure.Nonnegative(chunkBloomFilterSize, "chunkBloomFilterSize");
             Ensure.Nonnegative(chunkDataSize, "chunkDataSize");
             Ensure.Nonnegative(chunkDataUnitSize, "chunkDataUnitSize");
             Ensure.Nonnegative(chunkDataCount, "chunkDataCount");
@@ -117,7 +147,7 @@ namespace ECommon.Storage
 
             BasePath = basePath;
             FileNamingStrategy = fileNamingStrategy;
-            ChunkHeaderBloomFilterSize = chunkHeaderBloomFilterSize;
+            ChunkBloomFilterSize = chunkBloomFilterSize;
             ChunkDataSize = chunkDataSize;
             ChunkDataUnitSize = chunkDataUnitSize;
             ChunkDataCount = chunkDataCount;
@@ -135,10 +165,14 @@ namespace ECommon.Storage
             ChunkInactiveTimeMaxSeconds = chunkInactiveTimeMaxSeconds;
             ChunkLocalCacheSize = chunkLocalCacheSize;
             EnableChunkStatistic = enableChunkStatistic;
+            ChunkType = chunkType;
 
-            if (ChunkHeaderBloomFilterSize > 1024 * 1024 * 10)
+            if (ChunkType == ChunkType.Index)
             {
-                throw new ArgumentException("Chunk bloom filter size cannot bigger than 10M");
+                if (ChunkBloomFilterSize > 1024 * 1024 * 10)
+                {
+                    throw new ArgumentException("Chunk bloom filter size cannot bigger than 10M");
+                }
             }
             if (GetChunkDataSize() > 1024 * 1024 * 1024)
             {

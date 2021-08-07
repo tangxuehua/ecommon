@@ -33,14 +33,14 @@ namespace ECommon.Storage
         private readonly object _freeMemoryObj = new object();
 
         private int _dataPosition;
-        private int _bloomFilterSize;
+        private ChunkBloomFilter _chunkBloomFilter;
+        private int _chunkBloomFilterSize;
         private bool _isCompleted;
         private bool _isDestroying;
         private bool _isMemoryFreed;
         private int _cachingChunk;
         private DateTime _lastActiveTime;
         private bool _isReadersInitialized;
-        private int _flushedDataPosition;
 
         private Chunk _memoryChunk;
         private CacheItem[] _cacheItems;
@@ -56,6 +56,7 @@ namespace ECommon.Storage
         public string FileName { get { return _filename; } }
         public ChunkHeader ChunkHeader { get { return _chunkHeader; } }
         public ChunkFooter ChunkFooter { get { return _chunkFooter; } }
+        public ChunkBloomFilter ChunkBloomFilter { get { return _chunkBloomFilter; } }
         public ChunkManagerConfig Config { get { return _chunkConfig; } }
         public bool IsCompleted { get { return _isCompleted; } }
         public DateTime LastActiveTime
@@ -198,12 +199,17 @@ namespace ECommon.Storage
                     _chunkHeader = ReadHeader(fileStream, reader);
                     _chunkFooter = ReadFooter(fileStream, reader);
 
+                    if (_chunkHeader.ChunkType == ChunkType.Index)
+                    {
+                        _chunkBloomFilter = ReadBloomFilter(fileStream, reader);
+                        _chunkBloomFilterSize = _chunkBloomFilter.Size;
+                    }
+
                     CheckCompletedFileChunk();
                 }
             }
 
             _dataPosition = _chunkFooter.ChunkDataTotalSize;
-            _flushedDataPosition = _chunkFooter.ChunkDataTotalSize;
 
             if (_isMemoryChunk)
             {
@@ -220,11 +226,16 @@ namespace ECommon.Storage
         }
         private void InitNew(int chunkNumber)
         {
-            _chunkHeader = new ChunkHeader(chunkNumber, _chunkConfig.GetChunkDataSize(), _chunkConfig.ChunkHeaderBloomFilterSize);
+            _chunkHeader = new ChunkHeader(chunkNumber, _chunkConfig.GetChunkDataSize(), _chunkConfig.ChunkType);
 
             _isCompleted = false;
 
-            var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + _chunkHeader.BloomFilterSize + ChunkFooter.Size;
+            if (_chunkHeader.ChunkType == ChunkType.Index)
+            {
+                _chunkBloomFilterSize = _chunkConfig.ChunkBloomFilterSize;
+            }
+
+            var fileSize = ChunkHeader.Size + _chunkBloomFilterSize + _chunkHeader.ChunkDataTotalSize + ChunkFooter.Size;
 
             var writeStream = default(Stream);
             var tempFilename = string.Format("{0}.{1}.tmp", _filename, Guid.NewGuid());
@@ -263,7 +274,6 @@ namespace ECommon.Storage
                 writeStream.Position = ChunkHeader.Size;
 
                 _dataPosition = 0;
-                _flushedDataPosition = 0;
                 _writerWorkItem = new WriterWorkItem(new ChunkFileStream(writeStream, _chunkConfig.FlushOption));
 
                 InitializeReaderWorkItems();
@@ -337,24 +347,27 @@ namespace ECommon.Storage
                 throw new ChunkBadDataException(string.Format("Failed to parse chunk data, chunk file: {0}", _filename));
             }
 
-            _flushedDataPosition = _dataPosition;
-
             var writeStream = default(Stream);
 
             if (_isMemoryChunk)
             {
-                var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + _chunkHeader.BloomFilterSize + ChunkFooter.Size;
+                var fileSize = ChunkHeader.Size + _chunkHeader.ChunkDataTotalSize + _chunkBloomFilterSize + ChunkFooter.Size;
                 _cachedLength = fileSize;
                 _cachedData = Marshal.AllocHGlobal(_cachedLength);
                 writeStream = new UnmanagedMemoryStream((byte*)_cachedData, _cachedLength, _cachedLength, FileAccess.ReadWrite);
 
                 writeStream.Write(_chunkHeader.AsByteArray(), 0, ChunkHeader.Size);
 
+                if (_chunkBloomFilter != null)
+                {
+                    writeStream.Write(_chunkBloomFilter.AsByteArray(), 0, _chunkBloomFilterSize);
+                }
+
                 if (_dataPosition > 0)
                 {
                     using (var fileStream = new FileStream(_filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 8192, FileOptions.SequentialScan))
                     {
-                        fileStream.Seek(ChunkHeader.Size, SeekOrigin.Begin);
+                        fileStream.Seek(writeStream.Position, SeekOrigin.Begin);
                         var buffer = new byte[65536];
                         int toReadBytes = _dataPosition;
 
@@ -373,7 +386,7 @@ namespace ECommon.Storage
 
                 if (writeStream.Position != GetStreamPosition(_dataPosition))
                 {
-                    throw new InvalidOperationException(string.Format("UnmanagedMemoryStream position incorrect, expect: {0}, but: {1}", _dataPosition + ChunkHeader.Size, writeStream.Position));
+                    throw new InvalidOperationException(string.Format("UnmanagedMemoryStream position incorrect, expect: {0}, but: {1}", _dataPosition + ChunkHeader.Size + _chunkBloomFilterSize, writeStream.Position));
                 }
             }
             else
@@ -645,7 +658,7 @@ namespace ECommon.Storage
                 writerWorkItem.AppendData(buffer, 0, (int)bufferStream.Length);
             }
 
-            _dataPosition = (int)writerWorkItem.WorkingStream.Position - ChunkHeader.Size;
+            _dataPosition = (int)writerWorkItem.WorkingStream.Position - _chunkBloomFilterSize - ChunkHeader.Size;
 
             var position = ChunkHeader.ChunkDataStartPosition + writtenPosition;
 
@@ -684,34 +697,14 @@ namespace ECommon.Storage
         }
         public void WriteBloomFilter(string minKey, string maxKey, byte[] bloomFilterBytes)
         {
-            if (_chunkHeader.BloomFilterSize <= 0)
+            var bloomFilter = new ChunkBloomFilter(_chunkBloomFilterSize, minKey, maxKey, bloomFilterBytes);
+            var bytes = bloomFilter.AsByteArray();
+            _writerWorkItem.AppendData(bytes, 0, bytes.Length);
+            if (_chunkConfig.EnableCache && !_isMemoryChunk && _memoryChunk != null)
             {
-                throw new ChunkWriteException(ToString(), "Chunk header bloom filter size is not configed, so we cannot write bloom filter.");
+                _memoryChunk.WriteBloomFilter(minKey, maxKey, bloomFilterBytes);
             }
-            if (bloomFilterBytes.Length > _chunkHeader.BloomFilterSize)
-            {
-                throw new ChunkWriteException(ToString(), string.Format("Bloom filter bytes exceed max size, bytes size: {0}, maxSize: {1}", bloomFilterBytes.Length, _chunkHeader.BloomFilterSize));
-            }
-
-            var minKeyBytes = Encoding.UTF8.GetBytes(minKey);
-            var maxKeyBytes = Encoding.UTF8.GetBytes(maxKey);
-            var bloomFilter = new byte[_chunkHeader.BloomFilterSize + sizeof(int) * 3 + minKeyBytes.Length + maxKeyBytes.Length];
-            using (var stream = new MemoryStream(bloomFilter))
-            {
-                using (var writer = new BinaryWriter(stream))
-                {
-                    writer.Write(minKeyBytes.Length);
-                    writer.Write(minKeyBytes);
-
-                    writer.Write(maxKeyBytes.Length);
-                    writer.Write(maxKeyBytes);
-
-                    writer.Write(bloomFilterBytes.Length);
-                    writer.Write(bloomFilterBytes);
-                }
-            }
-            _writerWorkItem.AppendData(bloomFilter, 0, bloomFilter.Length);
-            _bloomFilterSize = bloomFilter.Length;
+            _chunkBloomFilter = bloomFilter;
         }
         public void Flush()
         {
@@ -828,7 +821,7 @@ namespace ECommon.Storage
             using (var fileStream = new FileStream(_filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, _chunkConfig.ChunkReadBuffer, FileOptions.None))
             {
                 //检查Chunk文件的实际大小是否正确
-                var chunkFileSize = ChunkHeader.Size + _chunkFooter.ChunkDataTotalSize + ChunkFooter.Size;
+                var chunkFileSize = ChunkHeader.Size + _chunkFooter.ChunkFilterTotalSize + _chunkFooter.ChunkDataTotalSize + ChunkFooter.Size;
                 if (chunkFileSize != fileStream.Length)
                 {
                     throw new ChunkBadDataException(
@@ -951,7 +944,7 @@ namespace ECommon.Storage
         }
         private ReaderWorkItem CreateReaderWorkItem()
         {
-            var stream = default(Stream);
+            Stream stream;
             if (_isMemoryChunk)
             {
                 stream = new UnmanagedMemoryStream((byte*)_cachedData, _cachedLength);
@@ -979,7 +972,6 @@ namespace ECommon.Storage
         private ChunkFooter WriteFooter()
         {
             var currentTotalDataSize = DataPosition;
-            var bloomFilterSize = _bloomFilterSize;
 
             //如果是固定大小的数据，则检查总数据大小是否正确
             if (IsFixedDataSize())
@@ -994,16 +986,16 @@ namespace ECommon.Storage
             }
 
             var workItem = _writerWorkItem;
-            var footer = new ChunkFooter(currentTotalDataSize);
+            var footer = new ChunkFooter(_chunkBloomFilterSize, currentTotalDataSize);
 
             workItem.AppendData(footer.AsByteArray(), 0, ChunkFooter.Size);
 
             Flush(); // trying to prevent bug with resized file, but no data in it
 
             var oldStreamLength = workItem.WorkingStream.Length;
-            var newStreamLength = ChunkHeader.Size + currentTotalDataSize + bloomFilterSize + ChunkFooter.Size;
+            var newStreamLength = ChunkHeader.Size + currentTotalDataSize + _chunkBloomFilterSize + ChunkFooter.Size;
 
-            if (newStreamLength != oldStreamLength)
+            if (oldStreamLength != newStreamLength)
             {
                 workItem.ResizeStream(newStreamLength);
             }
@@ -1018,6 +1010,15 @@ namespace ECommon.Storage
             }
             stream.Seek(0, SeekOrigin.Begin);
             return ChunkHeader.FromStream(reader);
+        }
+        private ChunkBloomFilter ReadBloomFilter(FileStream stream, BinaryReader reader)
+        {
+            if (stream.Length < ChunkHeader.Size)
+            {
+                throw new Exception(string.Format("Chunk file '{0}' is too short to even read ChunkHeader, its size is {1} bytes.", _filename, stream.Length));
+            }
+            stream.Seek(ChunkHeader.Size, SeekOrigin.Begin);
+            return ChunkBloomFilter.FromStream(reader);
         }
         private ChunkFooter ReadFooter(FileStream stream, BinaryReader reader)
         {
@@ -1139,10 +1140,15 @@ namespace ECommon.Storage
 
                     fileStream.Position = ChunkHeader.Size;
 
-                    var startStreamPosition = fileStream.Position;
+                    if (chunkHeader.ChunkType == ChunkType.Index)
+                    {
+                        _chunkBloomFilter = ChunkBloomFilter.FromStream(reader);
+                        _chunkBloomFilterSize = _chunkBloomFilter.Size;
+                    }
+
                     var maxStreamPosition = fileStream.Length - ChunkFooter.Size;
                     var isFixedDataSize = IsFixedDataSize();
-
+                    var currentStreamPosition = fileStream.Position;
                     while (fileStream.Position < maxStreamPosition)
                     {
                         var success = false;
@@ -1157,7 +1163,7 @@ namespace ECommon.Storage
 
                         if (success)
                         {
-                            startStreamPosition = fileStream.Position;
+                            currentStreamPosition = fileStream.Position;
                         }
                         else
                         {
@@ -1165,12 +1171,14 @@ namespace ECommon.Storage
                         }
                     }
 
-                    if (startStreamPosition != fileStream.Position)
+                    //确保Position回滚到最后一次的正确读取数据后的位置
+                    if (currentStreamPosition != fileStream.Position)
                     {
-                        fileStream.Position = startStreamPosition;
+                        //TODO，检查可能不同的原因
+                        fileStream.Position = currentStreamPosition;
                     }
 
-                    dataPosition = (int)fileStream.Position - ChunkHeader.Size;
+                    dataPosition = (int)fileStream.Position - ChunkHeader.Size - _chunkBloomFilterSize;
 
                     return true;
                 }
@@ -1247,9 +1255,9 @@ namespace ECommon.Storage
                 return false;
             }
         }
-        private static long GetStreamPosition(long dataPosition)
+        private long GetStreamPosition(long dataPosition)
         {
-            return ChunkHeader.Size + dataPosition;
+            return ChunkHeader.Size + _chunkBloomFilterSize + dataPosition;
         }
 
         private void SetFileAttributes()
